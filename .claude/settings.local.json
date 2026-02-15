@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)",
+      "Bash(curl:*)",
+      "Bash(npx vite:*)",
+      "Bash(taskkill:*)",
+      "Bash(dir /s:*)",
+      "Bash(node -e \"const r=require\\(''@rollup/rollup-win32-x64-msvc''\\); console.log\\(''rollup native ok''\\)\")",
+      "Bash(echo:*)",
+      "Bash(npm ls:*)",
+      "Bash(npx esbuild:*)",
+      "Bash(node -e:*)",
+      "Bash(git --version:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

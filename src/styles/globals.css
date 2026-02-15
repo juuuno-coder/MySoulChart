@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+/* ===== Custom Theme (index.html 인라인 config에서 이관) ===== */
+@theme {
+  /* Fonts */
+  --font-sans: 'Pretendard', 'Inter', sans-serif;
+  --font-serif: 'Noto Serif KR', serif;
+  --font-book: 'Gowun Batang', serif;
+
+  /* Custom Colors - void (배경) */
+  --color-void-950: #050209;
+  --color-void-900: #0B0418;
+  --color-void-800: #150A26;
+  --color-void-700: #1e1040;
+  --color-void-600: #2a1a55;
+
+  /* Custom Colors - mystic (보라 계열) */
+  --color-mystic-900: #1a1033;
+  --color-mystic-800: #2d1b4e;
+  --color-mystic-700: #432c7a;
+  --color-mystic-100: #e0d4fc;
+
+  /* Custom Colors - gold (골드 계열) */
+  --color-gold-100: #FBF5D4;
+  --color-gold-200: #F3E5AB;
+  --color-gold-300: #EBD483;
+  --color-gold-400: #D4AF37;
+  --color-gold-500: #B4941F;
+  --color-gold-600: #8A7012;
+
+  /* Animations */
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-float: float 6s ease-in-out infinite;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+}
+
+/* ===== Base Styles ===== */
+body {
+  background-color: #050209;
+  color: #e2e8f0;
+  word-break: keep-all;
+  font-family: 'Pretendard', sans-serif;
+}
+
+/* ===== Scrollbar ===== */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ===== Glassmorphism ===== */
+.glass-panel {
+  background: rgba(11, 4, 24, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.glass-input:focus {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: #D4AF37;
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
+}
