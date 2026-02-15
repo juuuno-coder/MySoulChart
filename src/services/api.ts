@@ -2,6 +2,7 @@
 // 기존 gemini.ts를 대체 (API 키가 서버에서만 관리됨)
 
 import { AnalysisMode, UserProfile, Message } from '../types';
+import { auth } from './firebase';
 
 interface ChatResponse {
   text: string;
@@ -72,6 +73,9 @@ export const sendMessage = async (
         text: msg.text,
       }));
 
+    // 로그인한 사용자의 UID 가져오기 (Freemium 사용량 체크용)
+    const uid = auth.currentUser?.uid;
+
     const response = await fetchWithTimeout(`${API_BASE}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -80,6 +84,7 @@ export const sendMessage = async (
         mode,
         profile: sanitizeProfile(profile),
         history: historyMessages,
+        uid, // Phase 2H-3: Freemium 사용량 제한용
       }),
     });
 

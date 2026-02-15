@@ -1,0 +1,46 @@
+// Firestore 보안 규칙 (Phase 2J-4)
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===== 사용자 문서 =====
+    match /users/{uid} {
+      // 1. 사용자 차트: 본인만 읽기/쓰기 가능
+      match /userChart {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+
+      // 2. 세션 데이터: 본인만 읽기/쓰기 가능
+      match /sessions/{sessionId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+
+      // 3. 주문 히스토리: 본인만 읽기/쓰기 가능
+      match /orders/{orderId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+
+      // 4. 사용량 데이터: 본인만 읽기 가능, 서버에서만 쓰기
+      match /usage/{usageId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow write: if false; // 서버 Admin SDK만 쓰기 가능
+      }
+    }
+
+    // ===== 권한 토큰 =====
+    match /permissions/{permissionId} {
+      // 읽기: 인증된 모든 사용자 (권한 검증용)
+      allow read: if request.auth != null;
+
+      // 쓰기: 차트 소유자만 권한 생성 가능
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.ownerId;
+
+      // 업데이트: 서버에서만 (사용량 카운트 증가)
+      allow update: if false; // Admin SDK만 업데이트 가능
+
+      // 삭제: 차트 소유자만 (권한 취소)
+      allow delete: if request.auth != null
+                    && request.auth.uid == resource.data.ownerId;
+    }
+  }
+}

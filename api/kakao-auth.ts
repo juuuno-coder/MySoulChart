@@ -1,19 +1,5 @@
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-// Firebase Admin 초기화 (싱글톤)
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
-}
-
-const auth = getAuth();
+import { auth } from './lib/firebase-admin';
 
 // 카카오 사용자 정보 타입
 interface KakaoUserInfo {

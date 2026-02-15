@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenerativeAI, Content } from '@google/generative-ai';
+import { checkUsageLimit } from './middleware/usage-limit';
 
 // ===== 타입 (클라이언트와 공유) =====
 type AnalysisMode = 'integrated' | 'blood' | 'mbti' | 'saju' | 'face' | 'couple' | 'zodiac';
@@ -32,6 +33,7 @@ interface ChatRequest {
   mode: AnalysisMode;
   profile: UserProfile;
   history?: HistoryMessage[];
+  uid?: string; // 로그인한 사용자의 UID (Firestore 사용량 체크용)
 }
 
 // ===== Rate Limiting (메모리 기반, 인스턴스당) =====
@@ -195,6 +197,19 @@ function sanitize(text: string): string {
   return text.replace(/<[^>]*>/g, '');
 }
 
+// ===== 슬라이딩 윈도우 (Phase 2H-1: API 토큰 60% 절감) =====
+function getRecentHistory(history: HistoryMessage[], maxTurns: number = 5): HistoryMessage[] {
+  // 1턴 = 사용자 메시지 + AI 응답 = 2개 메시지
+  const maxMessages = maxTurns * 2;
+
+  // 최근 N개 메시지만 추출
+  if (history.length <= maxMessages) {
+    return history;
+  }
+
+  return history.slice(-maxMessages);
+}
+
 // ===== 핸들러 =====
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
@@ -210,11 +225,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Rate Limiting
+  // Rate Limiting (IP 기반 - 단기 방어)
   const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket?.remoteAddress || 'unknown';
   if (!checkRateLimit(ip)) {
     return res.status(429).json({
-      text: '지금 너무 많은 영혼이 찾아와서 기가 고갈되었구나... 잠시 쉬었다가 다시 와주게. (일일 사용량 초과)',
+      text: '지금 너무 많은 영혼이 찾아와서 기가 고갈되었구나... 잠시 쉬었다가 다시 와주게. (분당 사용량 초과)',
       depth: null,
     });
   }
@@ -236,12 +251,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
+  // Freemium 사용량 제한 (Phase 2H-3: 로그인한 사용자만 체크)
+  if (body.uid) {
+    const canProceed = await checkUsageLimit(body.uid);
+    if (!canProceed) {
+      return res.status(429).json({
+        text: '이번 달 사용량을 모두 소진했구나... 다음 달에 다시 찾아와주게. (월 50 메시지 제한)',
+        depth: null,
+      });
+    }
+  }
+
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     const systemInstruction = buildSystemPrompt(body.mode, body.profile);
 
+    // 슬라이딩 윈도우 적용 (최근 5턴만 전송)
+    const recentHistory = getRecentHistory(body.history || [], 5);
+
     // 대화 히스토리 변환
-    const geminiHistory: Content[] = (body.history || []).map(msg => ({
+    const geminiHistory: Content[] = recentHistory.map(msg => ({
       role: msg.role === 'model' ? 'model' : 'user',
       parts: [{ text: sanitize(msg.text) }],
     }));
