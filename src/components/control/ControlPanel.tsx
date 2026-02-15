@@ -5,6 +5,7 @@ import { Settings, User, ScrollText, Dna, Activity, ScanFace, Brain, Heart, Uplo
 import { analyzeFace } from '../../services/api';
 import { showToast } from '../../utils/toast';
 import { validateImageFile } from '../../utils/fileValidation';
+import KakaoLoginButton from '../auth/KakaoLoginButton';
 
 interface ControlPanelProps {
   profile: UserProfile;
@@ -142,6 +143,11 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       <div className="flex items-center gap-2 mb-8 mt-2 text-gold-400/80">
         <Settings className="w-5 h-5" />
         <h2 className="text-sm font-bold tracking-[0.2em] uppercase">Control Center</h2>
+      </div>
+
+      {/* Kakao Login */}
+      <div className="mb-6">
+        <KakaoLoginButton />
       </div>
 
       {/* Depth Score - Visible only when session active */}

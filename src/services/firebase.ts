@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCEX8XfS5l7P9MkHerEjFr9THyuqlO8ZL8",
@@ -21,3 +22,6 @@ export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : nul
 
 // Firestore 초기화
 export const db = getFirestore(app);
+
+// Auth 초기화
+export const auth = getAuth(app);
