@@ -68,9 +68,13 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       try {
         // Immediate Analysis for User
         const features = await analyzeFace(base64);
+
+        // Convert features object to text description
+        const featuresText = `얼굴형: ${features.faceShape}, 이마: ${features.forehead}, 눈: ${features.eyes}, 코: ${features.nose}, 입: ${features.mouth}, 턱: ${features.chin}`;
+
         setProfile({
           ...profile,
-          faceFeatures: features,
+          faceFeatures: featuresText,
         });
       } catch (error) {
         console.error("User Face Analysis Failed", error);
@@ -102,13 +106,17 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       try {
         // Immediate Analysis for Partner
         const features = await analyzeFace(base64);
+
+        // Convert features object to text description
+        const featuresText = `얼굴형: ${features.faceShape}, 이마: ${features.forehead}, 눈: ${features.eyes}, 코: ${features.nose}, 입: ${features.mouth}, 턱: ${features.chin}`;
+
         setProfile({
           ...profile,
           partner: {
             ...(profile.partner || {
               name: '', birthDate: '', calendarType: 'solar', birthTime: '', birthPlace: '', bloodType: '', mbti: '', gender: 'other'
             }),
-            faceFeatures: features
+            faceFeatures: featuresText
           }
         });
       } catch (error) {
@@ -131,16 +139,16 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   ];
 
   const SectionHeader = ({ icon: Icon, title }: { icon: any, title: string }) => (
-    <div className="flex items-center gap-2 text-gray-400 border-b border-void-800 pb-2 mb-3">
-        <Icon size={14} className="text-gold-500/70" />
+    <div className="flex items-center gap-2 text-gray-400 border-b border-cosmic-800 pb-2 mb-3">
+        <Icon size={14} className="text-nebula-500/70" />
         <h3 className="font-bold text-[10px] uppercase tracking-widest text-gray-400">{title}</h3>
     </div>
   );
 
   return (
-    <div className={`w-full md:w-80 flex-shrink-0 flex flex-col h-full bg-void-950/90 backdrop-blur-xl border-r border-void-800 overflow-y-auto p-5 z-20 scrollbar-hide ${isSessionActive ? 'hidden md:flex' : 'flex'}`}>
+    <div className={`w-full md:w-80 flex-shrink-0 flex flex-col h-full bg-cosmic-950/90 backdrop-blur-xl border-r border-cosmic-800 overflow-y-auto p-5 z-20 scrollbar-hide ${isSessionActive ? 'hidden md:flex' : 'flex'}`}>
       
-      <div className="flex items-center gap-2 mb-8 mt-2 text-gold-400/80">
+      <div className="flex items-center gap-2 mb-8 mt-2 text-nebula-400/80">
         <Settings className="w-5 h-5" />
         <h2 className="text-sm font-bold tracking-[0.2em] uppercase">Control Center</h2>
       </div>
@@ -153,19 +161,19 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       {/* Depth Score - Visible only when session active */}
       {isSessionActive && (
         <div className="mb-10 relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-gold-500/20 to-violet-500/20 rounded-xl opacity-30 blur transition duration-500 group-hover:opacity-50"></div>
-            <div className="relative bg-void-900 p-5 rounded-xl border border-void-700/50 overflow-hidden">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-nebula-500/20 to-violet-500/20 rounded-xl opacity-30 blur transition duration-500 group-hover:opacity-50"></div>
+            <div className="relative bg-cosmic-900 p-5 rounded-xl border border-cosmic-700/50 overflow-hidden">
                 <div className="flex justify-between items-end mb-3 relative z-10">
-                    <span className="text-[10px] font-bold text-gold-500 uppercase tracking-widest flex items-center gap-1">
+                    <span className="text-[10px] font-bold text-nebula-500 uppercase tracking-widest flex items-center gap-1">
                         <Sparkles size={10} /> 분석 심도
                     </span>
                     <span className="text-3xl font-serif font-bold text-gray-100">{depthScore}<span className="text-sm font-sans font-light text-gray-600 ml-0.5">%</span></span>
                 </div>
                 
-                <div className="w-full bg-void-950 h-1.5 rounded-full overflow-hidden relative z-10 border border-void-800">
+                <div className="w-full bg-cosmic-950 h-1.5 rounded-full overflow-hidden relative z-10 border border-cosmic-800">
                     <div 
                         className={`h-full transition-all duration-1000 ease-out shadow-[0_0_10px_currentColor] ${
-                            depthScore >= 70 ? 'bg-emerald-500 text-emerald-500' : 'bg-gold-500 text-gold-500'
+                            depthScore >= 70 ? 'bg-emerald-500 text-emerald-500' : 'bg-nebula-500 text-nebula-500'
                         }`}
                         style={{ width: `${depthScore}%` }}
                     ></div>
@@ -183,9 +191,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           <div className="mb-4">
             <label className="block text-[10px] text-gray-500 mb-2 ml-1">본인 관상 사진</label>
             {isAnalyzingUser ? (
-                 <div className="w-full h-16 rounded-lg bg-gold-500/10 flex items-center justify-center border border-gold-500/30">
-                    <Loader2 className="animate-spin text-gold-400" size={16} />
-                    <span className="ml-2 text-xs text-gold-200">얼굴 분석 중...</span>
+                 <div className="w-full h-16 rounded-lg bg-nebula-500/10 flex items-center justify-center border border-nebula-500/30">
+                    <Loader2 className="animate-spin text-nebula-400" size={16} />
+                    <span className="ml-2 text-xs text-nebula-200">얼굴 분석 중...</span>
                 </div>
             ) : profile.faceFeatures ? (
                 <div className="w-full p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between">
@@ -199,9 +207,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                     </label>
                 </div>
             ) : (
-                <label className="w-full h-16 rounded-lg border border-dashed border-gold-500/30 hover:bg-gold-500/5 hover:border-gold-500/50 flex flex-col items-center justify-center cursor-pointer transition-all group">
-                    <Upload size={14} className="text-gold-400/50 group-hover:text-gold-400 mb-1" />
-                    <span className="text-[10px] text-gold-300/70 group-hover:text-gold-200">사진 업로드 (관상)</span>
+                <label className="w-full h-16 rounded-lg border border-dashed border-nebula-500/30 hover:bg-nebula-500/5 hover:border-nebula-500/50 flex flex-col items-center justify-center cursor-pointer transition-all group">
+                    <Upload size={14} className="text-nebula-400/50 group-hover:text-nebula-400 mb-1" />
+                    <span className="text-[10px] text-gold-300/70 group-hover:text-nebula-200">사진 업로드 (관상)</span>
                     <input type="file" accept="image/*" className="hidden" onChange={handleUserImageUpload} />
                 </label>
             )}
@@ -221,12 +229,12 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           <div>
              <label className="block text-[10px] text-gray-500 mb-1.5 ml-1">생년월일</label>
              <div className="flex flex-col gap-2">
-                 <div className="flex bg-void-900/50 rounded-md p-1 border border-void-700/50 w-full">
+                 <div className="flex bg-cosmic-900/50 rounded-md p-1 border border-cosmic-700/50 w-full">
                     <button
                         onClick={() => handleCalendarChange('solar')}
                         className={`flex-1 py-1 rounded text-[10px] font-bold transition-all ${
                             profile.calendarType === 'solar' 
-                            ? 'bg-gold-500 text-void-950 shadow-sm' 
+                            ? 'bg-nebula-500 text-cosmic-950 shadow-sm' 
                             : 'text-gray-500 hover:text-gray-300'
                         }`}
                     >
@@ -286,10 +294,10 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                 className="w-full glass-input rounded-md px-2 py-2.5 text-xs focus:outline-none appearance-none"
               >
                 <option value="">선택</option>
-                <option value="A" className="bg-void-900">A형</option>
-                <option value="B" className="bg-void-900">B형</option>
-                <option value="O" className="bg-void-900">O형</option>
-                <option value="AB" className="bg-void-900">AB형</option>
+                <option value="A" className="bg-cosmic-900">A형</option>
+                <option value="B" className="bg-cosmic-900">B형</option>
+                <option value="O" className="bg-cosmic-900">O형</option>
+                <option value="AB" className="bg-cosmic-900">AB형</option>
               </select>
             </div>
             <div>
@@ -370,9 +378,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                     onChange={handlePartnerChange}
                     className="w-full glass-input rounded-md px-2 py-2.5 text-xs focus:outline-none appearance-none border-pink-500/20 focus:border-pink-500"
                 >
-                    <option value="male" className="bg-void-900">남성</option>
-                    <option value="female" className="bg-void-900">여성</option>
-                    <option value="other" className="bg-void-900">기타</option>
+                    <option value="male" className="bg-cosmic-900">남성</option>
+                    <option value="female" className="bg-cosmic-900">여성</option>
+                    <option value="other" className="bg-cosmic-900">기타</option>
                 </select>
                 </div>
                 <div>
@@ -400,26 +408,26 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
               onClick={() => onModeChange(m.id)}
               className={`flex items-center gap-3 px-3 py-3 rounded-lg text-xs transition-all duration-300 font-medium border ${
                 mode === m.id
-                  ? 'bg-void-800 border-gold-500/40 text-gold-200 shadow-[0_0_15px_rgba(212,175,55,0.1)]'
-                  : 'bg-transparent border-transparent text-gray-500 hover:bg-void-800 hover:text-gray-300'
+                  ? 'bg-cosmic-800 border-nebula-500/40 text-nebula-200 shadow-[0_0_15px_rgba(212,175,55,0.1)]'
+                  : 'bg-transparent border-transparent text-gray-500 hover:bg-cosmic-800 hover:text-gray-300'
               }`}
             >
-              <span className={mode === m.id ? 'text-gold-400' : 'text-gray-600'}>{m.icon}</span>
+              <span className={mode === m.id ? 'text-nebula-400' : 'text-gray-600'}>{m.icon}</span>
               {m.label}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="mt-auto pt-6 border-t border-void-800 space-y-3">
+      <div className="mt-auto pt-6 border-t border-cosmic-800 space-y-3">
         {/* START BUTTON */}
         <button
           onClick={onStartSession}
           disabled={isAnalyzingUser || isAnalyzingPartner}
           className={`w-full py-4 rounded-lg flex items-center justify-center gap-2 font-bold tracking-widest text-xs transition-all duration-500 shadow-lg ${
              isSessionActive 
-             ? 'bg-void-800 border border-gold-500/30 text-gold-400 hover:bg-gold-500/10' 
-             : 'bg-gradient-to-r from-gold-600 to-gold-400 text-void-950 hover:from-gold-500 hover:to-gold-300 shadow-[0_0_20px_rgba(212,175,55,0.2)]'
+             ? 'bg-cosmic-800 border border-nebula-500/30 text-nebula-400 hover:bg-nebula-500/10' 
+             : 'bg-gradient-to-r from-nebula-500 to-nebula-400 text-cosmic-950 hover:from-nebula-500 hover:to-gold-300 shadow-[0_0_20px_rgba(212,175,55,0.2)]'
           }`}
         >
           <Play size={12} fill="currentColor" />

@@ -30,11 +30,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, isLoading, onSe
           {/* Empty State */}
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center text-center text-gray-500 opacity-80 animate-fadeIn pb-10">
-              <div className="w-16 h-16 rounded-full bg-void-800 flex items-center justify-center border border-void-700 mb-4 shadow-2xl relative">
-                <div className="absolute inset-0 rounded-full bg-gold-400/10 animate-pulse-slow"></div>
+              <div className="w-16 h-16 rounded-full bg-cosmic-800 flex items-center justify-center border border-cosmic-700 mb-4 shadow-2xl relative">
+                <div className="absolute inset-0 rounded-full bg-nebula-400/10 animate-pulse-slow"></div>
                 <Stars className="w-6 h-6 text-gold-300" />
               </div>
-              <p className="font-serif text-xl text-gold-100 mb-2 tracking-wide">운명의 대화를 시작합니다</p>
+              <p className="font-serif text-xl text-starlight-200 mb-2 tracking-wide">운명의 대화를 시작합니다</p>
               <p className="text-sm font-light text-gray-500">당신의 이야기가 별들에게 닿기를 기다립니다.</p>
             </div>
           )}
@@ -47,9 +47,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, isLoading, onSe
           {/* Loading Indicator */}
           {isLoading && (
             <div className="flex w-full justify-start pl-[54px]">
-              <div className="px-5 py-3 rounded-2xl rounded-tl-none glass-panel border-gold-500/10 text-gold-400 flex items-center gap-3">
-                <Loader2 size={18} className="animate-spin text-gold-500" />
-                <span className="text-sm font-serif opacity-80 tracking-widest text-gold-200">운명의 흐름을 읽는 중...</span>
+              <div className="px-5 py-3 rounded-2xl rounded-tl-none glass-panel border-nebula-500/10 text-nebula-400 flex items-center gap-3">
+                <Loader2 size={18} className="animate-spin text-nebula-500" />
+                <span className="text-sm font-serif opacity-80 tracking-widest text-nebula-200">운명의 흐름을 읽는 중...</span>
               </div>
             </div>
           )}

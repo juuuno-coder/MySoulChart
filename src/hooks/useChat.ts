@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Message, AnalysisMode, UserProfile } from '../types';
 import { sendMessage, initializeSession } from '../services/api';
+import { showToast } from '../utils/toast';
 
 interface UseChatReturn {
   messages: Message[];
@@ -48,10 +49,22 @@ export const useChat = (): UseChatReturn => {
       }
     } catch (error) {
       console.error("Failed to start session", error);
+
+      // Toast로 에러 복구 경로 제공
+      showToast(
+        'error',
+        '세션을 시작하는데 기가 흐트러졌구나...',
+        5000,
+        {
+          label: '다시 시도',
+          onClick: () => startSession(mode, profile),
+        }
+      );
+
       setMessages([{
         id: 'error-init',
         role: 'model',
-        text: "기가 흐트러져서 목소리가 안 나오는구나... 다시 시도해주겠나?",
+        text: "기가 흐트러져서 목소리가 안 나오는구나... 위의 버튼을 눌러 다시 시도해주겠나?",
         timestamp: new Date()
       }]);
     } finally {
@@ -122,10 +135,22 @@ export const useChat = (): UseChatReturn => {
       setMessages(prev => [...prev, newModelMsg]);
     } catch (error) {
       console.error("Error in chat flow", error);
+
+      // Toast로 에러 복구 경로 제공
+      showToast(
+        'error',
+        '영혼의 문이 잠시 흐트러졌구나... 다시 시도해보겠나?',
+        5000,
+        {
+          label: '다시 시도',
+          onClick: () => sendUserMessage(text, mode, profile),
+        }
+      );
+
       setMessages(prev => [...prev, {
         id: `error-${Date.now()}`,
         role: 'model',
-        text: "통신 상태가 불안정합니다. 잠시 후 다시 시도해주세요.",
+        text: "통신이 원활하지 않아 말이 닿지 않았구나. 위의 버튼을 눌러 다시 시도해보게.",
         timestamp: new Date(),
       }]);
     } finally {

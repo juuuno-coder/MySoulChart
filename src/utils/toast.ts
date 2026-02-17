@@ -2,10 +2,16 @@
 
 type ToastType = 'success' | 'warning' | 'error';
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 export interface ToastMessage {
   id: string;
   type: ToastType;
   message: string;
+  action?: ToastAction;
 }
 
 // 토스트 리스너들을 저장하는 Set
@@ -26,10 +32,15 @@ const notifyListeners = () => {
 };
 
 // 토스트 표시 (메인 함수)
-export const showToast = (type: ToastType, message: string, duration: number = 3000) => {
+export const showToast = (
+  type: ToastType,
+  message: string,
+  duration: number = 3000,
+  action?: ToastAction
+) => {
   const id = `toast-${Date.now()}-${Math.random()}`;
 
-  const newToast: ToastMessage = { id, type, message };
+  const newToast: ToastMessage = { id, type, message, action };
   toasts = [...toasts, newToast];
   notifyListeners();
 

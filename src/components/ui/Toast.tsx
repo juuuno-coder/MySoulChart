@@ -40,10 +40,10 @@ const ToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
       case 'success':
         return {
           icon: <CheckCircle size={20} />,
-          bgClass: 'bg-emerald-900/60',
-          borderClass: 'border-emerald-500/40',
-          textClass: 'text-emerald-100',
-          iconClass: 'text-emerald-400'
+          bgClass: 'bg-aurora-900/60',
+          borderClass: 'border-aurora-500/40',
+          textClass: 'text-aurora-100',
+          iconClass: 'text-aurora-400'
         };
       case 'warning':
         return {
@@ -83,10 +83,29 @@ const ToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
         {style.icon}
       </div>
 
-      {/* 메시지 */}
-      <p className={`flex-1 text-sm font-medium leading-relaxed ${style.textClass}`}>
-        {toast.message}
-      </p>
+      {/* 메시지 및 액션 */}
+      <div className="flex-1 flex flex-col gap-2">
+        <p className={`text-sm font-medium leading-relaxed ${style.textClass}`}>
+          {toast.message}
+        </p>
+
+        {/* 액션 버튼 (있을 경우만) */}
+        {toast.action && (
+          <button
+            onClick={() => {
+              toast.action!.onClick();
+              handleClose();
+            }}
+            className={`
+              self-start px-3 py-1.5 rounded-md text-xs font-medium
+              ${style.iconClass} bg-cosmic-800/80 hover:bg-cosmic-700/80
+              transition-colors duration-200
+            `}
+          >
+            {toast.action.label}
+          </button>
+        )}
+      </div>
 
       {/* 닫기 버튼 */}
       <button

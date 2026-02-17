@@ -1,170 +1,425 @@
-// Vercel Serverless Functions 호출 클라이언트
-// 기존 gemini.ts를 대체 (API 키가 서버에서만 관리됨)
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { AnalysisMode, Message, UserProfile } from '../types';
+import { CardData } from '../types/card';
+import { GET_MODE_PROMPT, GET_GREETING_TRIGGER } from '../constants/prompts';
 
-import { AnalysisMode, UserProfile, Message } from '../types';
-import { auth } from './firebase';
+// 로컬 개발 환경 감지
+const IS_LOCAL_DEV = import.meta.env.DEV;
+const API_BASE_URL = IS_LOCAL_DEV ? 'http://localhost:3304/api' : '/api';
 
-interface ChatResponse {
-  text: string;
-  depth: number | null;
-}
+// 로컬 개발용 Gemini API (VITE_GEMINI_API_KEY 사용)
+let localGenAI: GoogleGenerativeAI | null = null;
+let localModel: any = null;
 
-interface FaceAnalysisResponse {
-  features: string;
-}
-
-interface HistoryMessage {
-  role: 'user' | 'model';
-  text: string;
-}
-
-const API_BASE = '/api';
-const TIMEOUT_MS = 45000;
-
-/**
- * 타임아웃이 포함된 fetch 래퍼
- */
-async function fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    return response;
-  } finally {
-    clearTimeout(timeout);
-  }
+if (IS_LOCAL_DEV && import.meta.env.VITE_GEMINI_API_KEY) {
+  localGenAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+  localModel = localGenAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  console.log('[DEV] Using local Gemini API (client-side)');
 }
 
 /**
- * 도사 페르소나 에러 메시지 반환
+ * Depth 태그 파싱
  */
-function getErrorMessage(status: number, fallback?: string): string {
-  if (status === 429) {
-    return '지금 너무 많은 영혼이 찾아와서 기가 고갈되었구나... 잠시 쉬었다가 다시 와주게. (일일 사용량 초과)';
+function parseDepth(text: string): { cleanText: string; depth: number } {
+  const depthMatch = text.match(/<DEPTH>(\d+)<\/DEPTH>/);
+  if (!depthMatch) {
+    return { cleanText: text, depth: 50 };
   }
-  if (status === 400) {
-    return fallback || '입력한 내용을 다시 확인해주게.';
-  }
-  if (status >= 500) {
-    return '기가 약해서 목소리가 잘 안 들리네... 잠시 후 다시 시도해주게.';
-  }
-  return fallback || '알 수 없는 기운이 방해하고 있구나...';
+
+  const depth = parseInt(depthMatch[1], 10);
+  const cleanText = text.replace(/<DEPTH>\d+<\/DEPTH>/g, '').trim();
+  return { cleanText, depth };
 }
 
 /**
- * 메시지 전송 (채팅)
+ * 로컬 개발용: 클라이언트에서 직접 Gemini API 호출
  */
-export const sendMessage = async (
+async function sendMessageLocal(
   message: string,
   mode: AnalysisMode,
   profile: UserProfile,
-  history: Message[] = []
-): Promise<ChatResponse> => {
+  history: Message[]
+): Promise<{ text: string; depth: number }> {
+  if (!localModel) {
+    throw new Error('로컬 Gemini API가 초기화되지 않았습니다');
+  }
+
+  const systemPrompt = GET_MODE_PROMPT(mode, profile);
+
+  const chatHistory = history.map((msg) => ({
+    role: msg.role === 'user' ? 'user' : 'model',
+    parts: [{ text: msg.text }],
+  }));
+
+  const chat = localModel.startChat({
+    history: [
+      {
+        role: 'user',
+        parts: [{ text: systemPrompt }],
+      },
+      {
+        role: 'model',
+        parts: [{ text: '알겠습니다. 시스템 프롬프트를 반영하여 답변하겠습니다.' }],
+      },
+      ...chatHistory,
+    ],
+  });
+
+  const result = await chat.sendMessage(message);
+  const response = await result.response;
+  const rawText = response.text();
+
+  const { cleanText, depth } = parseDepth(rawText);
+
+  return { text: cleanText, depth };
+}
+
+/**
+ * 로컬 개발용: 클라이언트에서 직접 관상 분석
+ */
+async function analyzeFaceLocal(imageBase64: string): Promise<{
+  faceShape: string;
+  forehead: string;
+  eyes: string;
+  nose: string;
+  mouth: string;
+  chin: string;
+}> {
+  if (!localGenAI) {
+    throw new Error('로컬 Gemini API가 초기화되지 않았습니다');
+  }
+
+  const visionModel = localGenAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+  const imageData = imageBase64.split(',')[1] || imageBase64;
+
+  const prompt = `
+당신은 수천 년간 관상을 보아온 신비로운 도사입니다.
+
+이 사진 속 인물의 관상을 분석하여 다음 특징들을 판단해주세요:
+
+1. 얼굴형: (둥근형 / 계란형 / 각진형 / 역삼각형 / 긴형)
+2. 이마: (넓음 / 보통 / 좁음)
+3. 눈: (큰 눈 / 중간 눈 / 작은 눈)
+4. 코: (높은 코 / 보통 코 / 낮은 코)
+5. 입: (큰 입 / 보통 입 / 작은 입)
+6. 턱: (강한 턱 / 보통 턱 / 둥근 턱)
+
+응답은 반드시 다음 JSON 형식으로만 답변하세요:
+{
+  "faceShape": "...",
+  "forehead": "...",
+  "eyes": "...",
+  "nose": "...",
+  "mouth": "...",
+  "chin": "..."
+}
+`;
+
+  const result = await visionModel.generateContent([
+    prompt,
+    {
+      inlineData: {
+        data: imageData,
+        mimeType: 'image/jpeg',
+      },
+    },
+  ]);
+
+  const response = await result.response;
+  const text = response.text();
+
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error('AI 응답을 파싱할 수 없습니다.');
+  }
+
+  return JSON.parse(jsonMatch[0]);
+}
+
+/**
+ * Gemini API를 통해 메시지 전송
+ * @param message 사용자 메시지
+ * @param mode 분석 모드
+ * @param profile 사용자 프로필
+ * @param history 대화 히스토리
+ * @returns AI 응답 및 심도 점수
+ */
+export async function sendMessage(
+  message: string,
+  mode: AnalysisMode,
+  profile: UserProfile,
+  history: Message[]
+): Promise<{ text: string; depth: number }> {
+  // 로컬 개발: 클라이언트에서 직접 호출
+  if (IS_LOCAL_DEV && localModel) {
+    try {
+      return await sendMessageLocal(message, mode, profile, history);
+    } catch (error: any) {
+      console.error('[DEV] Local Gemini API Error:', error);
+      throw error;
+    }
+  }
+
+  // 프로덕션: Serverless Functions 호출
   try {
-    // 히스토리를 API에 맞는 형태로 변환
-    const historyMessages: HistoryMessage[] = history
-      .filter(msg => !msg.isThinking)
-      .map(msg => ({
-        role: msg.role,
-        text: msg.text,
-      }));
-
-    // 로그인한 사용자의 UID 가져오기 (Freemium 사용량 체크용)
-    const uid = auth.currentUser?.uid;
-
-    const response = await fetchWithTimeout(`${API_BASE}/chat`, {
+    const response = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         message,
         mode,
-        profile: sanitizeProfile(profile),
-        history: historyMessages,
-        uid, // Phase 2H-3: Freemium 사용량 제한용
+        profile,
+        history: history.map(msg => ({
+          role: msg.role,
+          text: msg.text,
+        })),
       }),
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-      return {
-        text: data.text || getErrorMessage(response.status, data.error),
-        depth: data.depth ?? null,
-      };
+      const error = await response.json();
+      throw new Error(error.error || '서버 오류가 발생했습니다');
     }
 
-    return { text: data.text, depth: data.depth ?? null };
-  } catch (error: any) {
-    if (error.name === 'AbortError') {
-      return {
-        text: '대답이 너무 늦어 미안하네... 다시 물어봐주게. (응답 시간 초과)',
-        depth: null,
-      };
-    }
-    console.error('API call failed:', error);
+    const data = await response.json();
     return {
-      text: '기가 약해서 목소리가 잘 안 들리네... 잠시 후 다시 시도해주게.',
-      depth: null,
+      text: data.text,
+      depth: data.depth,
     };
+  } catch (error: any) {
+    console.error('API Error:', error);
+    throw new Error(error.message || '통신 오류가 발생했습니다');
   }
-};
+}
 
 /**
- * 관상 분석
+ * 관상 분석 (이미지 업로드)
+ * @param imageBase64 Base64 인코딩된 이미지
+ * @returns 관상 특징 데이터
  */
-export const analyzeFace = async (imageBase64: string): Promise<string> => {
+export async function analyzeFace(
+  imageBase64: string
+): Promise<{
+  faceShape: string;
+  forehead: string;
+  eyes: string;
+  nose: string;
+  mouth: string;
+  chin: string;
+}> {
+  // 로컬 개발: 클라이언트에서 직접 호출
+  if (IS_LOCAL_DEV && localGenAI) {
+    try {
+      return await analyzeFaceLocal(imageBase64);
+    } catch (error: any) {
+      console.error('[DEV] Local Face Analysis Error:', error);
+      throw error;
+    }
+  }
+
+  // 프로덕션: Serverless Functions 호출
   try {
-    const response = await fetchWithTimeout(`${API_BASE}/analyze-face`, {
+    const response = await fetch(`${API_BASE_URL}/analyze-face`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: imageBase64 }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ imageBase64 }),
     });
 
-    const data: FaceAnalysisResponse = await response.json();
-
     if (!response.ok) {
-      return data.features || '관상을 보는데 실패했구나... 잠시 후 다시 시도해주게.';
+      const error = await response.json();
+      throw new Error(error.error || '관상 분석 오류가 발생했습니다');
     }
 
+    const data = await response.json();
     return data.features;
   } catch (error: any) {
-    if (error.name === 'AbortError') {
-      return '관상을 보는 데 시간이 좀 걸리네... 다시 시도해주게.';
-    }
-    console.error('Face analysis failed:', error);
-    return '관상을 보는데 실패했구나... (이미지 분석 오류)';
+    console.error('Face Analysis Error:', error);
+    throw new Error(error.message || '관상 분석 중 오류가 발생했습니다');
   }
-};
+}
 
 /**
- * 세션 시작 시 인사말 요청 (모드 전환 시 사용)
+ * 세션 시작 (인사말 생성)
+ * @param mode 분석 모드
+ * @param profile 사용자 프로필
+ * @returns 인사말 및 심도 점수
  */
-export const initializeSession = async (
+export async function initializeSession(
   mode: AnalysisMode,
   profile: UserProfile
-): Promise<ChatResponse> => {
-  const greetingMessage = `
-  (System Instruction)
-  [상황: 사용자가 상담 모드를 '${mode.toUpperCase()}'로 변경했습니다.]
+): Promise<{ text: string; depth: number }> {
+  try {
+    const greetingTrigger = GET_GREETING_TRIGGER(mode);
 
-  당신의 임무:
-  1. 현재 설정된 시스템 프롬프트와 사용자의 데이터를 즉시 반영하십시오.
-  2. 도사 페르소나를 유지하면서, 이 모드의 관점에서 사용자에게 건네는 첫 마디를 출력하십시오.
-  3. 바로 본론을 찌르거나 관상의 특징을 언급하며 흥미를 유발하십시오.
-  4. 길게 말하지 말고 1~2문장으로 임팩트 있게 끝내십시오.
-  `;
+    const response = await sendMessage(
+      greetingTrigger,
+      mode,
+      profile,
+      []
+    );
 
-  return sendMessage(greetingMessage, mode, profile, []);
-};
+    return response;
+  } catch (error: any) {
+    console.error('Session Initialization Error:', error);
+    // 실패 시 기본 인사말 반환
+    return {
+      text: '어서 와요. 얼굴을 딱 보니... 뭔가 답답한 게 꽉 막혀있는 거 같은데?',
+      depth: 10,
+    };
+  }
+}
 
 /**
- * 프로필에서 민감 데이터(faceImage) 제거
+ * 로컬 개발용: 클라이언트에서 직접 카드 데이터 생성
  */
-function sanitizeProfile(profile: UserProfile): UserProfile {
-  const { faceImage, ...clean } = profile;
-  return clean;
+async function generateCardLocal(
+  mode: AnalysisMode,
+  profile: Partial<UserProfile>,
+  conversationHistory: Array<{ role: 'user' | 'assistant'; text: string }>,
+  depthScore: number
+): Promise<CardData> {
+  if (!localModel) {
+    throw new Error('로컬 Gemini API가 초기화되지 않았습니다');
+  }
+
+  // 대화 내용 요약
+  const conversationText = conversationHistory
+    .map((msg) => `${msg.role === 'user' ? '내담자' : '도사'}: ${msg.text}`)
+    .join('\n\n');
+
+  // 카드 데이터 생성 프롬프트
+  const prompt = `
+당신은 지금까지의 상담 내용을 바탕으로 **영혼 차트 결과 카드**를 만들어야 합니다.
+
+**내담자 정보:**
+- 이름: ${profile.name}
+- 생년월일: ${profile.birthDate || '미입력'}
+- 별자리: ${profile.zodiacSign || '미입력'}
+- MBTI: ${profile.mbti || '미입력'}
+- 혈액형: ${profile.bloodType || '미입력'}
+
+**상담 모드:** ${mode.toUpperCase()}
+
+**대화 내용:**
+${conversationText}
+
+**심도 점수:** ${depthScore}/100
+
+---
+
+위 상담 내용을 바탕으로, 내담자의 영혼을 한 장의 카드로 요약해주세요.
+
+**응답 형식 (JSON만 출력, 다른 텍스트 없이):**
+
+\`\`\`json
+{
+  "headline": "한 줄 헤드라인 (예: 불꽃의 그릇을 가진 사람, 물의 흐름을 읽는 자)",
+  "traits": [
+    "성격 특성 1 (예: 직관력이 뛰어남)",
+    "성격 특성 2 (예: 감정이 풍부함)",
+    "성격 특성 3",
+    "성격 특성 4",
+    "성격 특성 5"
+  ],
+  "advice": "핵심 조언 1-2문장 (예: 지금은 내면의 소리에 귀 기울일 때입니다. 급하게 결정하지 마세요.)",
+  "luckyItems": {
+    "color": "행운의 색 (예: 청록색)",
+    "number": 행운의 숫자 (1~99 정수),
+    "direction": "행운의 방향 (예: 동쪽)"
+  }
+}
+\`\`\`
+
+**중요:**
+- JSON 형식을 정확히 지켜주세요
+- headline은 15자 이내로 간결하게
+- traits는 정확히 5개
+- advice는 100자 이내
+- 도사 페르소나를 유지하되, 카드에 어울리는 고급스러운 표현 사용
+`;
+
+  const result = await localModel.generateContent(prompt);
+  const response = await result.response;
+  const text = response.text();
+
+  // JSON 파싱
+  const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error('AI 응답을 파싱할 수 없습니다');
+  }
+
+  const jsonText = jsonMatch[1] || jsonMatch[0];
+  const parsedData = JSON.parse(jsonText);
+
+  // CardData 구성
+  const cardData: CardData = {
+    userName: profile.name || '도인',
+    mode,
+    zodiacSign: profile.zodiacSign,
+    headline: parsedData.headline,
+    traits: parsedData.traits,
+    advice: parsedData.advice,
+    luckyItems: parsedData.luckyItems,
+    depthScore,
+    createdAt: new Date(),
+  };
+
+  return cardData;
+}
+
+/**
+ * 대화 히스토리를 분석하여 결과 카드 데이터 생성
+ * @param mode 분석 모드
+ * @param profile 사용자 프로필
+ * @param conversationHistory 대화 히스토리
+ * @param depthScore 심도 점수
+ * @returns 카드 데이터
+ */
+export async function generateCard(
+  mode: AnalysisMode,
+  profile: Partial<UserProfile>,
+  conversationHistory: Array<{ role: 'user' | 'assistant'; text: string }>,
+  depthScore: number
+): Promise<CardData> {
+  // 로컬 개발: 클라이언트에서 직접 호출
+  if (IS_LOCAL_DEV && localModel) {
+    try {
+      return await generateCardLocal(mode, profile, conversationHistory, depthScore);
+    } catch (error: any) {
+      console.error('[DEV] Local Card Generation Error:', error);
+      throw error;
+    }
+  }
+
+  // 프로덕션: Serverless Functions 호출
+  try {
+    const response = await fetch(`${API_BASE_URL}/generate-card`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        mode,
+        profile,
+        conversationHistory,
+        depthScore,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || '카드 생성 오류가 발생했습니다');
+    }
+
+    const data = await response.json();
+    return data.cardData;
+  } catch (error: any) {
+    console.error('Card Generation Error:', error);
+    throw new Error(error.message || '카드 생성 중 오류가 발생했습니다');
+  }
 }

@@ -18,20 +18,20 @@ export default function ChartDashboard({ chart, onStartAnalysis, readOnly = fals
   const modes: AnalysisMode[] = ['face', 'zodiac', 'mbti', 'saju', 'blood'];
 
   return (
-    <div className="min-h-screen bg-void-950 p-6">
+    <div className="min-h-screen bg-cosmic-950 p-6">
       <div className="max-w-6xl mx-auto space-y-8">
         {/* 헤더 */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center gap-2">
-            <Sparkles className="w-8 h-8 text-gold-400 animate-pulse-slow" />
-            <h1 className="text-3xl md:text-4xl font-bold text-gold-200">
+            <Sparkles className="w-8 h-8 text-nebula-400 animate-pulse-slow" />
+            <h1 className="text-3xl md:text-4xl font-bold text-nebula-200">
               {chart.name}님의 영혼 차트
             </h1>
           </div>
 
           {readOnly && (
-            <div className="inline-block px-4 py-2 bg-mystic-900/50 border border-mystic-700 rounded-lg">
-              <span className="text-sm text-mystic-100">
+            <div className="inline-block px-4 py-2 bg-cosmic-700/50 border border-nebula-400 rounded-lg">
+              <span className="text-sm text-nebula-100">
                 선물 받은 차트입니다
               </span>
             </div>
@@ -77,12 +77,12 @@ export default function ChartDashboard({ chart, onStartAnalysis, readOnly = fals
 
         {/* 완성 축하 메시지 + 공유 버튼 */}
         {chart.completedCount === chart.totalAnalyses && !readOnly && (
-          <div className="mt-8 text-center p-8 glass-panel border-2 border-gold-400/50 rounded-2xl">
-            <Sparkles className="w-12 h-12 text-gold-400 mx-auto mb-4 animate-pulse" />
-            <h2 className="text-2xl font-bold text-gold-200 mb-2">
+          <div className="mt-8 text-center p-8 glass-panel border-2 border-nebula-400/50 rounded-2xl">
+            <Sparkles className="w-12 h-12 text-nebula-400 mx-auto mb-4 animate-pulse" />
+            <h2 className="text-2xl font-bold text-nebula-200 mb-2">
               영혼 차트 완성을 축하합니다!
             </h2>
-            <p className="text-gold-100/70 mb-6">
+            <p className="text-starlight-200/70 mb-6">
               모든 분석을 완료하셨습니다. 이제 친구에게 차트를 선물해보세요.
             </p>
             <SharePermissionButton chart={chart} />

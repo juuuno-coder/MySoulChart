@@ -73,10 +73,10 @@ export default function KakaoLoginButton() {
             className="w-8 h-8 rounded-full"
           />
         )}
-        <span className="text-sm text-gold-200">{userInfo.nickname}</span>
+        <span className="text-sm text-nebula-200">{userInfo.nickname}</span>
         <button
           onClick={handleLogout}
-          className="px-4 py-2 text-sm bg-void-800/50 hover:bg-void-700/50 text-gold-200 rounded-lg transition-colors"
+          className="px-4 py-2 text-sm bg-cosmic-800/50 hover:bg-cosmic-700/50 text-nebula-200 rounded-lg transition-colors"
         >
           로그아웃
         </button>

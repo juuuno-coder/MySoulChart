@@ -23,10 +23,10 @@ const ChatInput: React.FC<ChatInputProps> = ({ isLoading, onSendMessage }) => {
   };
 
   return (
-    <div className="px-3 pb-3 pt-2 z-20 bg-gradient-to-t from-void-950 via-void-950 to-transparent">
+    <div className="px-3 pb-3 pt-2 z-20 bg-gradient-to-t from-cosmic-950 via-cosmic-950 to-transparent">
       <div className="max-w-4xl mx-auto relative group">
-        <div className="absolute -inset-0.5 bg-gradient-to-r from-gold-500/20 to-violet-500/20 rounded-full opacity-50 blur group-hover:opacity-75 transition duration-500"></div>
-        <div className="relative flex items-center gap-2 bg-void-900 rounded-full p-1.5 border border-void-700 shadow-2xl">
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-nebula-500/20 to-violet-500/20 rounded-full opacity-50 blur group-hover:opacity-75 transition duration-500"></div>
+        <div className="relative flex items-center gap-2 bg-cosmic-900 rounded-full p-1.5 border border-cosmic-700 shadow-2xl">
           <input
             type="text"
             value={inputValue}
@@ -41,8 +41,8 @@ const ChatInput: React.FC<ChatInputProps> = ({ isLoading, onSendMessage }) => {
             disabled={isLoading || !inputValue.trim()}
             className={`p-3 rounded-full transition-all duration-300 flex items-center justify-center ${
               isLoading || !inputValue.trim()
-                ? 'bg-void-800 text-gray-600'
-                : 'bg-gold-500 hover:bg-gold-400 text-void-950 shadow-[0_0_15px_rgba(212,175,55,0.4)] transform hover:scale-105'
+                ? 'bg-cosmic-800 text-gray-600'
+                : 'bg-nebula-500 hover:bg-nebula-400 text-cosmic-950 shadow-[0_0_15px_rgba(212,175,55,0.4)] transform hover:scale-105'
             }`}
           >
             <Send size={20} />

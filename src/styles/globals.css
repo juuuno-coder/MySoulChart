@@ -7,26 +7,44 @@
   --font-serif: 'Noto Serif KR', serif;
   --font-book: 'Gowun Batang', serif;
 
-  /* Custom Colors - void (배경) */
-  --color-void-950: #050209;
-  --color-void-900: #0B0418;
-  --color-void-800: #150A26;
-  --color-void-700: #1e1040;
-  --color-void-600: #2a1a55;
+  /* 🌌 Cosmic Theme - Deep Space Background */
+  --color-cosmic-950: #0a0118;
+  --color-cosmic-900: #13011f;
+  --color-cosmic-800: #1d0533;
+  --color-cosmic-700: #2b0a4a;
+  --color-cosmic-600: #3d1061;
 
-  /* Custom Colors - mystic (보라 계열) */
-  --color-mystic-900: #1a1033;
-  --color-mystic-800: #2d1b4e;
-  --color-mystic-700: #432c7a;
-  --color-mystic-100: #e0d4fc;
+  /* 🌠 Nebula - Purple/Pink Gradient */
+  --color-nebula-500: #8b5cf6;
+  --color-nebula-400: #a78bfa;
+  --color-nebula-300: #c4b5fd;
+  --color-nebula-200: #ddd6fe;
+  --color-nebula-100: #f3f0ff;
 
-  /* Custom Colors - gold (골드 계열) */
-  --color-gold-100: #FBF5D4;
-  --color-gold-200: #F3E5AB;
-  --color-gold-300: #EBD483;
-  --color-gold-400: #D4AF37;
-  --color-gold-500: #B4941F;
-  --color-gold-600: #8A7012;
+  /* ✨ Starlight - Bright White/Blue */
+  --color-starlight-500: #60a5fa;
+  --color-starlight-400: #93c5fd;
+  --color-starlight-300: #dbeafe;
+  --color-starlight-200: #f0f9ff;
+  --color-starlight-100: #ffffff;
+
+  /* 🌊 Aurora - Teal/Cyan Accent */
+  --color-aurora-500: #14b8a6;
+  --color-aurora-400: #2dd4bf;
+  --color-aurora-300: #5eead4;
+
+  /* ✨ Gold - Warm Accent (도사 테마) */
+  --color-gold-600: #ca8a04;
+  --color-gold-500: #eab308;
+  --color-gold-400: #facc15;
+  --color-gold-300: #fde047;
+  --color-gold-200: #fef08a;
+  --color-gold-100: #fef9c3;
+
+  /* 🎨 Semantic Colors */
+  --color-success: var(--color-aurora-500);
+  --color-error: #ef4444;
+  --color-warning: var(--color-gold-500);
 
   /* Animations */
   --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -40,8 +58,9 @@
 
 /* ===== Base Styles ===== */
 body {
-  background-color: #050209;
-  color: #e2e8f0;
+  background: linear-gradient(135deg, #0a0118 0%, #1d0533 50%, #13011f 100%);
+  background-attachment: fixed;
+  color: #f0f9ff;
   word-break: keep-all;
   font-family: 'Pretendard', sans-serif;
 }
@@ -57,22 +76,135 @@ body {
 
 /* ===== Glassmorphism ===== */
 .glass-panel {
-  background: rgba(11, 4, 24, 0.6);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  background: rgba(29, 5, 51, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.1);
 }
 
 .glass-input {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  color: #f0f9ff;
   transition: all 0.3s ease;
 }
 
 .glass-input:focus {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: #D4AF37;
-  box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
+  background: rgba(139, 92, 246, 0.1);
+  border-color: #60a5fa;
+  box-shadow: 0 0 20px rgba(96, 165, 250, 0.3);
+}
+
+/* ===== Cosmic Effects ===== */
+.glow-nebula {
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.5),
+               0 0 40px rgba(139, 92, 246, 0.3);
+}
+
+.glow-starlight {
+  text-shadow: 0 0 20px rgba(96, 165, 250, 0.6),
+               0 0 40px rgba(96, 165, 250, 0.4);
+}
+
+.glow-aurora {
+  text-shadow: 0 0 20px rgba(20, 184, 166, 0.6),
+               0 0 40px rgba(20, 184, 166, 0.4);
+}
+
+.nebula-gradient {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 50%, #60a5fa 100%);
+}
+
+.aurora-gradient {
+  background: linear-gradient(90deg, #14b8a6 0%, #2dd4bf 50%, #5eead4 100%);
+}
+
+/* Starfield Animation */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.star-twinkle {
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+/* Fade In Animation */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+/* ===== Typography System ===== */
+.text-heading-1 {
+  font-family: var(--font-serif);
+  font-size: 3rem; /* 48px */
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+@media (min-width: 768px) {
+  .text-heading-1 {
+    font-size: 4.5rem; /* 72px */
+  }
+}
+
+.text-heading-2 {
+  font-family: var(--font-serif);
+  font-size: 1.875rem; /* 30px */
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+@media (min-width: 768px) {
+  .text-heading-2 {
+    font-size: 2.25rem; /* 36px */
+  }
+}
+
+.text-heading-3 {
+  font-family: var(--font-serif);
+  font-size: 1.5rem; /* 24px */
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+@media (min-width: 768px) {
+  .text-heading-3 {
+    font-size: 1.875rem; /* 30px */
+  }
+}
+
+.text-body {
+  font-family: var(--font-sans);
+  font-size: 1rem; /* 16px */
+  line-height: 1.75;
+  letter-spacing: -0.01em;
+}
+
+.text-mystical {
+  font-family: var(--font-book);
+  font-size: 1rem; /* 16px */
+  line-height: 2;
+  letter-spacing: 0.05em;
+  word-break: keep-all;
+}
+
+@media (min-width: 768px) {
+  .text-mystical {
+    font-size: 1.125rem; /* 18px */
+  }
 }

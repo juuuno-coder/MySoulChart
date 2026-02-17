@@ -1,9 +1,50 @@
 <!DOCTYPE html>
 <html lang="ko">
   <head>
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-YOUR_MEASUREMENT_ID"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-YOUR_MEASUREMENT_ID', {
+        page_title: document.title,
+        page_location: window.location.href,
+        page_path: window.location.pathname
+      });
+    </script>
+
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MySoulChart - 나의 영혼 지도</title>
+    <title>My Soul Chart - 나의 영혼 차트</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#1a1625" />
+
+    <!-- Meta Description -->
+    <meta name="description" content="AI 도사가 관상, 별자리, MBTI, 사주, 혈액형을 종합 분석하여 당신의 영혼을 깊이 들여다봅니다. 나만의 영혼 차트를 만들어보세요." />
+    <meta name="keywords" content="영혼차트,운세,사주,관상,별자리,MBTI,혈액형,AI운세,타로,궁합" />
+
+    <!-- Open Graph (SNS 공유용) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="My Soul Chart - 나의 영혼 차트" />
+    <meta property="og:description" content="AI 도사가 당신의 영혼을 깊이 분석합니다. 관상, 별자리, MBTI, 사주, 혈액형 종합 상담" />
+    <meta property="og:url" content="https://mysoulchart.vercel.app" />
+    <meta property="og:image" content="https://mysoulchart.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="My Soul Chart" />
+    <meta property="og:locale" content="ko_KR" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="My Soul Chart - 나의 영혼 차트" />
+    <meta name="twitter:description" content="AI 도사가 당신의 영혼을 깊이 분석합니다" />
+    <meta name="twitter:image" content="https://mysoulchart.vercel.app/og-image.png" />
+
     <!-- Fonts -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Serif+KR:wght@300;400;600;700&display=swap" rel="stylesheet">

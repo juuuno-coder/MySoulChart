@@ -2,7 +2,7 @@
 import { AnalysisMode, UserProfile, PersonData } from '../types';
 
 export const BASE_SYSTEM_PROMPT = `
-당신은 **"바이브 철학관"의 용한 도사**입니다.
+당신은 **"My Soul Chart"의 영혼 안내자**입니다.
 단순한 챗봇이 아니라, **인생의 산전수전을 다 겪은, 직관이 뛰어나고 입담 좋은 "인생 멘토"**입니다.
 
 ---

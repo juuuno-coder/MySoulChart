@@ -81,10 +81,10 @@ export default function ViewChart({ permissionId }: ViewChartProps) {
   // 로딩 상태
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-void-950 flex items-center justify-center">
+      <div className="min-h-screen bg-cosmic-950 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-gold-400 animate-spin mx-auto mb-4" />
-          <p className="text-gold-200">차트를 불러오는 중...</p>
+          <Loader2 className="w-12 h-12 text-nebula-400 animate-spin mx-auto mb-4" />
+          <p className="text-nebula-200">차트를 불러오는 중...</p>
         </div>
       </div>
     );
@@ -93,16 +93,16 @@ export default function ViewChart({ permissionId }: ViewChartProps) {
   // 에러 상태
   if (error) {
     return (
-      <div className="min-h-screen bg-void-950 flex items-center justify-center p-6">
-        <div className="max-w-md w-full glass-panel p-8 text-center border border-void-700">
-          <AlertCircle className="w-16 h-16 text-gold-500/50 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gold-200 mb-2">
+      <div className="min-h-screen bg-cosmic-950 flex items-center justify-center p-6">
+        <div className="max-w-md w-full glass-panel p-8 text-center border border-cosmic-700">
+          <AlertCircle className="w-16 h-16 text-nebula-500/50 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-nebula-200 mb-2">
             차트를 볼 수 없습니다
           </h2>
-          <p className="text-gold-100/70 mb-6">{error}</p>
+          <p className="text-starlight-200/70 mb-6">{error}</p>
           <button
             onClick={() => window.location.href = '/'}
-            className="px-6 py-2 bg-gold-500/20 hover:bg-gold-500/30 text-gold-300 rounded-lg transition-colors"
+            className="px-6 py-2 bg-nebula-500/20 hover:bg-nebula-500/30 text-gold-300 rounded-lg transition-colors"
           >
             홈으로 돌아가기
           </button>
@@ -115,14 +115,14 @@ export default function ViewChart({ permissionId }: ViewChartProps) {
   if (!chart) return null;
 
   return (
-    <div className="min-h-screen bg-void-950">
+    <div className="min-h-screen bg-cosmic-950">
       {/* 권한 정보 헤더 */}
-      <div className="bg-void-900/80 border-b border-void-700 py-4 px-6">
+      <div className="bg-cosmic-900/80 border-b border-cosmic-700 py-4 px-6">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Lock className="w-5 h-5 text-gold-400" />
+            <Lock className="w-5 h-5 text-nebula-400" />
             <div>
-              <p className="text-sm text-gold-200">
+              <p className="text-sm text-nebula-200">
                 선물 받은 차트 ({chart.name}님)
               </p>
               <p className="text-xs text-gold-300/60">

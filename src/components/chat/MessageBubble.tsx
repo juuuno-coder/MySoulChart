@@ -17,8 +17,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message }) => 
         {/* Avatar */}
         <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg border ${
           message.role === 'user'
-            ? 'bg-void-800 border-void-600 text-gray-300'
-            : 'bg-void-900 border-gold-500/30 text-gold-400'
+            ? 'bg-cosmic-800 border-cosmic-600 text-gray-300'
+            : 'bg-cosmic-900 border-nebula-500/30 text-nebula-400'
         }`}>
           {message.role === 'user' ? <UserIcon size={18} /> : <Bot size={18} />}
         </div>
@@ -26,8 +26,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message }) => 
         {/* Bubble */}
         <div className={`relative px-5 py-4 rounded-2xl shadow-xl transition-all ${
           message.role === 'user'
-            ? 'bg-gradient-to-br from-void-800 to-void-900 border border-void-700 text-gray-100 rounded-tr-none'
-            : 'glass-panel text-gray-100 rounded-tl-none border-gold-500/10'
+            ? 'bg-gradient-to-br from-cosmic-800 to-cosmic-900 border border-cosmic-700 text-gray-100 rounded-tr-none'
+            : 'glass-panel text-gray-100 rounded-tl-none border-nebula-500/10'
         }`}>
           <div className={`prose prose-invert max-w-none break-keep leading-relaxed ${
             message.role === 'model' ? 'font-book text-lg text-gray-100' : 'font-sans text-base text-gray-100'

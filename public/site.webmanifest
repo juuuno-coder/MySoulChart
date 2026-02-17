@@ -1,0 +1,25 @@
+{
+  "name": "My Soul Chart - 나의 영혼 차트",
+  "short_name": "MySoulChart",
+  "description": "AI 도사가 관상, 별자리, MBTI, 사주, 혈액형을 종합 분석하여 당신의 영혼을 깊이 들여다봅니다",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1625",
+  "theme_color": "#1a1625",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["lifestyle", "entertainment"],
+  "lang": "ko-KR"
+}

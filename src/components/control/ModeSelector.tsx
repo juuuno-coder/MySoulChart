@@ -19,7 +19,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, onModeChange }) => {
   ];
 
   return (
-    <div className="glass-panel rounded-xl p-4 border border-void-700/50">
+    <div className="glass-panel rounded-xl p-4 border border-cosmic-700/50">
       <h3 className="text-sm font-medium text-gray-300 mb-3">상담 모드 선택</h3>
       <div className="grid grid-cols-2 gap-2">
         {modes.map((m) => {
@@ -31,13 +31,13 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ mode, onModeChange }) => {
               onClick={() => onModeChange(m.id)}
               className={`p-3 rounded-lg border transition-all duration-200 text-left ${
                 isActive
-                  ? 'bg-gold-500/20 border-gold-500/50 shadow-[0_0_15px_rgba(212,175,55,0.2)]'
-                  : 'bg-void-900/50 border-void-700 hover:border-void-600 hover:bg-void-900/70'
+                  ? 'bg-nebula-500/20 border-nebula-500/50 shadow-[0_0_15px_rgba(212,175,55,0.2)]'
+                  : 'bg-cosmic-900/50 border-cosmic-700 hover:border-cosmic-600 hover:bg-cosmic-900/70'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
-                <Icon size={16} className={isActive ? 'text-gold-400' : 'text-gray-500'} />
-                <span className={`text-xs font-medium ${isActive ? 'text-gold-200' : 'text-gray-400'}`}>
+                <Icon size={16} className={isActive ? 'text-nebula-400' : 'text-gray-500'} />
+                <span className={`text-xs font-medium ${isActive ? 'text-nebula-200' : 'text-gray-400'}`}>
                   {m.label}
                 </span>
               </div>

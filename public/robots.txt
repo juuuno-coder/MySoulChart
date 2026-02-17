@@ -1,0 +1,15 @@
+# My Soul Chart - robots.txt
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://mysoulchart.vercel.app/sitemap.xml
+
+# Crawl-delay (optional, for politeness)
+Crawl-delay: 1
+
+# Disallow private routes (if any)
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/

@@ -80,7 +80,7 @@ export default function SharePermissionButton({ chart }: SharePermissionButtonPr
   if (showShareMenu) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-gold-200 text-center mb-4">
+        <p className="text-sm text-nebula-200 text-center mb-4">
           차트를 공유할 방법을 선택하세요
         </p>
 
@@ -97,7 +97,7 @@ export default function SharePermissionButton({ chart }: SharePermissionButtonPr
           {/* 링크 복사 */}
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-2 px-4 py-3 bg-void-800 hover:bg-void-700 text-gold-200 rounded-lg font-medium transition-colors border border-void-600 justify-center"
+            className="flex items-center gap-2 px-4 py-3 bg-cosmic-800 hover:bg-cosmic-700 text-nebula-200 rounded-lg font-medium transition-colors border border-cosmic-600 justify-center"
           >
             <Link2 className="w-5 h-5" />
             링크 복사
@@ -107,7 +107,7 @@ export default function SharePermissionButton({ chart }: SharePermissionButtonPr
           {navigator.share && (
             <button
               onClick={handleWebShare}
-              className="flex items-center gap-2 px-4 py-3 bg-void-800 hover:bg-void-700 text-gold-200 rounded-lg font-medium transition-colors border border-void-600 justify-center col-span-2"
+              className="flex items-center gap-2 px-4 py-3 bg-cosmic-800 hover:bg-cosmic-700 text-nebula-200 rounded-lg font-medium transition-colors border border-cosmic-600 justify-center col-span-2"
             >
               <Share2 className="w-5 h-5" />
               다른 앱으로 공유
@@ -117,7 +117,7 @@ export default function SharePermissionButton({ chart }: SharePermissionButtonPr
 
         <button
           onClick={() => setShowShareMenu(false)}
-          className="w-full py-2 text-sm text-gold-300 hover:text-gold-200 transition-colors"
+          className="w-full py-2 text-sm text-gold-300 hover:text-nebula-200 transition-colors"
         >
           취소
         </button>
