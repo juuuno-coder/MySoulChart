@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserProfile, AnalysisMode, CalendarType } from '../../types';
+import { UserProfile, AnalysisMode, CalendarType, PersonData } from '../../types';
 import { Sparkles, ArrowRight, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AceternityInput } from '../ui/AceternityInput';
@@ -7,10 +7,10 @@ import AceternityDateSelector from '../ui/AceternityDateSelector';
 
 interface ConversationalFormProps {
   mode: AnalysisMode;
-  profile: UserProfile; // 추가: profile props
+  profile: UserProfile;
   onSubmit: (profile: Partial<UserProfile>) => void;
   onCancel: () => void;
-  onChange: (profile: Partial<UserProfile>) => void; // 실시간 업데이트 (required로 변경)
+  onChange: (profile: Partial<UserProfile>) => void;
 }
 
 interface Question {
@@ -22,18 +22,37 @@ interface Question {
   placeholder?: string;
 }
 
+const DEFAULT_PARTNER: PersonData = {
+  name: '', birthDate: '', calendarType: 'solar', birthTime: '',
+  birthPlace: '', bloodType: '', mbti: '', gender: 'other',
+};
+
 export default function ConversationalForm({ mode, profile, onSubmit, onCancel, onChange }: ConversationalFormProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [currentValue, setCurrentValue] = useState('');
 
+  // 질문 ID → 프로필 업데이트 매핑
+  const mapToProfile = (questionId: string, value: string): Partial<UserProfile> => {
+    if (questionId.startsWith('partner')) {
+      const field = questionId.charAt(7).toLowerCase() + questionId.slice(8);
+      return {
+        partner: {
+          ...(profile.partner || DEFAULT_PARTNER),
+          [field]: value,
+        } as PersonData,
+      };
+    }
+    return { [questionId]: value };
+  };
+
   // 모드별 질문 구성
   const getQuestions = (): Question[] => {
-    const baseQuestions: Question[] = [];
+    const questions: Question[] = [];
 
-    // 관상: 사진 업로드
+    // 관상: 사진 업로드 (최우선)
     if (mode === 'face') {
-      baseQuestions.push({
+      questions.push({
         id: 'faceImage',
         text: '그대의 얼굴을 보여주시게.\n관상에는 운명이 새겨져 있다네.',
         type: 'file',
@@ -41,27 +60,25 @@ export default function ConversationalForm({ mode, profile, onSubmit, onCancel, 
       });
     }
 
-    // 이름 (MBTI, 혈액형 제외)
-    if (mode !== 'mbti' && mode !== 'blood') {
-      baseQuestions.push({
-        id: 'name',
-        text: '이름을 알려주시게.\n이름은 영혼의 첫 번째 진동이니.',
-        type: 'text',
-        required: true,
-        placeholder: '예: 홍길동',
-      });
-    }
+    // 이름 (모든 모드에서 수집)
+    questions.push({
+      id: 'name',
+      text: '이름을 알려주시게.\n이름은 영혼의 첫 번째 진동이니.',
+      type: 'text',
+      required: true,
+      placeholder: '예: 홍길동',
+    });
 
     // 생년월일 (MBTI, 혈액형 제외)
     if (mode !== 'mbti' && mode !== 'blood') {
-      baseQuestions.push({
+      questions.push({
         id: 'birthDate',
         text: '언제 이 세상에 태어났는가?\n별들의 배치가 운명을 결정한다네.',
         type: 'date',
         required: true,
       });
 
-      baseQuestions.push({
+      questions.push({
         id: 'calendarType',
         text: '양력인가, 음력인가?',
         type: 'select',
@@ -73,57 +90,116 @@ export default function ConversationalForm({ mode, profile, onSubmit, onCancel, 
       });
     }
 
-    // 태어난 시간 (별자리만)
+    // 점성학: 태어난 시간/장소 (선택)
     if (mode === 'zodiac') {
-      baseQuestions.push({
+      questions.push({
         id: 'birthTime',
-        text: '정확한 출생 시각을 알려주게.\n하늘의 시계가 그대의 별자리를 가리킨다.',
+        text: '출생 시각을 알고 있다면 알려주게.\n하늘의 시계가 그대의 별자리를 가리킨다.',
         type: 'time',
-        required: true,
+        required: false,
       });
 
-      baseQuestions.push({
+      questions.push({
         id: 'birthPlace',
-        text: '어디서 태어났는가?\n장소도 운명의 일부라네.',
+        text: '어디서 태어났는가?',
         type: 'text',
-        required: true,
+        required: false,
         placeholder: '예: 서울특별시',
       });
     }
 
-    // 혈액형
-    if (mode === 'blood' || mode === 'face' || mode === 'saju' || mode === 'zodiac') {
-      baseQuestions.push({
+    // 혈액형 (관련 모드 + 통합)
+    if (mode === 'blood' || mode === 'face' || mode === 'saju' || mode === 'zodiac' || mode === 'integrated') {
+      const isRequired = mode === 'blood';
+      questions.push({
         id: 'bloodType',
-        text: mode === 'blood'
+        text: isRequired
           ? '그대의 혈액형은 무엇인가?\n피에는 성격의 비밀이 흐른다네.'
-          : '혈액형을 알고 있다면 알려주게. (선택)',
+          : '혈액형을 알고 있다면 알려주게.',
         type: 'select',
-        required: mode === 'blood',
-        options: [
-          { value: '', label: '선택하세요' },
-          { value: 'A', label: 'A형' },
-          { value: 'B', label: 'B형' },
-          { value: 'O', label: 'O형' },
-          { value: 'AB', label: 'AB형' },
-        ],
+        required: isRequired,
+        options: isRequired
+          ? [
+              { value: 'A', label: 'A형' },
+              { value: 'B', label: 'B형' },
+              { value: 'O', label: 'O형' },
+              { value: 'AB', label: 'AB형' },
+            ]
+          : [
+              { value: '', label: '모르겠음' },
+              { value: 'A', label: 'A형' },
+              { value: 'B', label: 'B형' },
+              { value: 'O', label: 'O형' },
+              { value: 'AB', label: 'AB형' },
+            ],
       });
     }
 
-    // MBTI
-    if (mode === 'mbti' || mode === 'face' || mode === 'saju' || mode === 'zodiac') {
-      baseQuestions.push({
+    // MBTI (관련 모드 + 통합)
+    if (mode === 'mbti' || mode === 'face' || mode === 'saju' || mode === 'zodiac' || mode === 'integrated') {
+      questions.push({
         id: 'mbti',
         text: mode === 'mbti'
           ? '그대의 MBTI 유형은 무엇인가?\n4글자로 그대의 마음을 밝혀보게.'
-          : 'MBTI를 안다면 알려주게. (선택)',
+          : 'MBTI를 안다면 알려주게.',
         type: 'text',
         required: mode === 'mbti',
         placeholder: '예: INFP',
       });
     }
 
-    return baseQuestions;
+    // 커플 궁합: 파트너 정보
+    if (mode === 'couple') {
+      questions.push({
+        id: 'partnerName',
+        text: '상대방의 이름을 알려주시게.\n인연의 실을 따라가 보자꾸나.',
+        type: 'text',
+        required: true,
+        placeholder: '상대방 이름',
+      });
+
+      questions.push({
+        id: 'partnerBirthDate',
+        text: '상대방은 언제 태어났는가?',
+        type: 'date',
+        required: true,
+      });
+
+      questions.push({
+        id: 'partnerCalendarType',
+        text: '상대방의 생년월일은 양력인가, 음력인가?',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'solar', label: '양력' },
+          { value: 'lunar', label: '음력' },
+        ],
+      });
+
+      questions.push({
+        id: 'partnerBloodType',
+        text: '상대방의 혈액형을 아는가?',
+        type: 'select',
+        required: false,
+        options: [
+          { value: '', label: '모르겠음' },
+          { value: 'A', label: 'A형' },
+          { value: 'B', label: 'B형' },
+          { value: 'O', label: 'O형' },
+          { value: 'AB', label: 'AB형' },
+        ],
+      });
+
+      questions.push({
+        id: 'partnerMbti',
+        text: '상대방의 MBTI를 안다면 알려주게.',
+        type: 'text',
+        required: false,
+        placeholder: '예: ENFJ',
+      });
+    }
+
+    return questions;
   };
 
   const questions = getQuestions();
@@ -134,19 +210,12 @@ export default function ConversationalForm({ mode, profile, onSubmit, onCancel, 
   const handleNext = () => {
     if (!currentValue && currentQuestion.required) return;
 
-    // 데이터 저장
-    const updatedProfile = {
-      [currentQuestion.id]: currentValue,
-    };
-
-    // 실시간 업데이트
+    const updatedProfile = mapToProfile(currentQuestion.id, currentValue);
     onChange(updatedProfile);
 
     if (isLastStep) {
-      // 제출
       onSubmit({ ...profile, ...updatedProfile });
     } else {
-      // 다음 질문
       setCurrentStep(currentStep + 1);
       setCurrentValue('');
     }
@@ -158,6 +227,24 @@ export default function ConversationalForm({ mode, profile, onSubmit, onCancel, 
       e.preventDefault();
       handleNext();
     }
+  };
+
+  // select 옵션 클릭
+  const handleSelectOption = (optionValue: string) => {
+    // 필수 항목인데 빈 값이면 무시
+    if (!optionValue && currentQuestion.required) return;
+
+    setCurrentValue(optionValue);
+    setTimeout(() => {
+      const updatedProfile = mapToProfile(currentQuestion.id, optionValue);
+      onChange(updatedProfile);
+      if (isLastStep) {
+        onSubmit({ ...profile, ...updatedProfile });
+      } else {
+        setCurrentStep(currentStep + 1);
+        setCurrentValue('');
+      }
+    }, 200);
   };
 
   // 이미지 업로드
@@ -272,26 +359,16 @@ export default function ConversationalForm({ mode, profile, onSubmit, onCancel, 
           <div className="space-y-3" role="radiogroup" aria-required={currentQuestion.required}>
             {currentQuestion.options?.map((option, index) => (
               <motion.button
-                key={option.value}
+                key={option.value || '__empty__'}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
                 role="radio"
                 aria-checked={currentValue === option.value}
-                onClick={() => {
-                  setCurrentValue(option.value);
-                  setTimeout(() => {
-                    const updatedProfile = { [currentQuestion.id]: option.value };
-                    onChange(updatedProfile);
-                    if (isLastStep) {
-                      onSubmit({ ...profile, ...updatedProfile });
-                    } else {
-                      setCurrentStep(currentStep + 1);
-                      setCurrentValue('');
-                    }
-                  }, 200);
-                }}
-                className="w-full px-6 py-4 rounded-xl border border-nebula-400/30 text-starlight-200 hover:bg-nebula-500/10 hover:border-nebula-400/50 transition-all text-left font-medium"
+                onClick={() => handleSelectOption(option.value)}
+                className={`w-full px-6 py-4 rounded-xl border text-starlight-200 hover:bg-nebula-500/10 hover:border-nebula-400/50 transition-all text-left font-medium ${
+                  !option.value ? 'border-cosmic-700/50 text-starlight-400/60' : 'border-nebula-400/30'
+                }`}
                 whileHover={{ scale: 1.02, x: 4 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -360,7 +437,7 @@ export default function ConversationalForm({ mode, profile, onSubmit, onCancel, 
         )}
       </div>
 
-      {/* 건너뛰기 (선택 항목만) */}
+      {/* 건너뛰기 (선택 항목만, select가 아닌 경우) */}
       {!currentQuestion.required && currentQuestion.type !== 'select' && (
         <button
           onClick={() => {

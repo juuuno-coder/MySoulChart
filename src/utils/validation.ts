@@ -2,7 +2,7 @@ import { AnalysisMode, UserProfile } from '../types';
 
 export interface ValidationResult {
   isValid: boolean;
-  errors: Partial<Record<keyof UserProfile, string>>;
+  errors: Record<string, string>;
 }
 
 /**
@@ -12,20 +12,18 @@ export function validateProfile(
   mode: AnalysisMode,
   profile: Partial<UserProfile>
 ): ValidationResult {
-  const errors: Partial<Record<keyof UserProfile, string>> = {};
+  const errors: Record<string, string> = {};
 
-  // 공통 필수 필드 (MBTI, 혈액형 제외)
-  if (mode !== 'mbti' && mode !== 'blood') {
-    if (!profile.name?.trim()) {
-      errors.name = '이름을 입력해주세요';
-    }
+  // 공통 필수 필드: 이름은 모든 모드에서 필수
+  if (!profile.name?.trim()) {
+    errors.name = '이름을 입력해주세요';
   }
 
   // 모드별 필수 필드
   switch (mode) {
     case 'face':
       if (!profile.faceImage && !profile.faceFeatures) {
-        errors.faceImage = '얼굴 사진을 업로드하거나 관상 특징을 입력해주세요';
+        errors.faceImage = '얼굴 사진을 업로드해주세요';
       }
       if (!profile.birthDate) {
         errors.birthDate = '생년월일을 입력해주세요';
@@ -45,12 +43,11 @@ export function validateProfile(
       if (!profile.birthDate) {
         errors.birthDate = '생년월일을 입력해주세요';
       }
-      // 별자리는 생년월일만 필요 (출생 시간/장소는 선택사항)
       break;
 
     case 'mbti':
       if (!profile.mbti) {
-        errors.mbti = 'MBTI를 선택해주세요';
+        errors.mbti = 'MBTI를 입력해주세요';
       }
       break;
 
@@ -61,25 +58,18 @@ export function validateProfile(
       break;
 
     case 'couple':
-      if (!profile.name?.trim()) {
-        errors.name = '본인 이름을 입력해주세요';
-      }
       if (!profile.birthDate) {
         errors.birthDate = '본인 생년월일을 입력해주세요';
       }
       if (!profile.partner?.name?.trim()) {
-        errors.name = '상대방 이름을 입력해주세요';
+        errors.partnerName = '상대방 이름을 입력해주세요';
       }
       if (!profile.partner?.birthDate) {
-        errors.birthDate = '상대방 생년월일을 입력해주세요';
+        errors.partnerBirthDate = '상대방 생년월일을 입력해주세요';
       }
       break;
 
     case 'integrated':
-      // 통합 모드는 최소한의 정보만 요구
-      if (!profile.name?.trim()) {
-        errors.name = '이름을 입력해주세요';
-      }
       break;
   }
 
