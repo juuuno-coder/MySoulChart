@@ -84,11 +84,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 슬라이딩 윈도우 적용
     const recentHistory = getRecentHistory(history || [], 5);
 
-    // 히스토리가 model로 끝나도록 보정 (Gemini API 요구사항)
-    const formattedHistory = recentHistory.map((msg: any) => ({
+    // Gemini API 요구사항: 히스토리는 user로 시작하고, user/model이 번갈아 나와야 함
+    const rawHistory = recentHistory.map((msg: any) => ({
       role: msg.role === 'user' ? 'user' : 'model',
       parts: [{ text: msg.text }],
     }));
+
+    // 히스토리가 model로 시작하면 앞에 합성 user 메시지 추가
+    if (rawHistory.length > 0 && rawHistory[0].role === 'model') {
+      rawHistory.unshift({
+        role: 'user',
+        parts: [{ text: '상담을 시작합니다.' }],
+      });
+    }
+
+    // 연속된 같은 role 메시지 병합 (Gemini API는 교대 필수)
+    const formattedHistory: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+    for (const msg of rawHistory) {
+      if (formattedHistory.length > 0 && formattedHistory[formattedHistory.length - 1].role === msg.role) {
+        // 같은 role이면 텍스트를 이전 메시지에 합침
+        formattedHistory[formattedHistory.length - 1].parts[0].text += '\n\n' + msg.parts[0].text;
+      } else {
+        formattedHistory.push(msg);
+      }
+    }
 
     // Gemini API 호출
     const chat = model.startChat({
