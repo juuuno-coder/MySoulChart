@@ -3,7 +3,9 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Gemini API 초기화 (서버 환경변수에서만 접근)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+// 유효한 분석 모드 목록
+const VALID_MODES = ['face', 'zodiac', 'mbti', 'saju', 'blood', 'couple', 'integrated'];
 
 // Rate Limiting (간단한 인메모리 구현, 나중에 Upstash Redis로 교체)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -66,25 +68,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: '메시지가 너무 길거나 잘못되었습니다.' });
     }
 
-    if (!mode || !['face', 'zodiac', 'mbti', 'saju', 'blood', 'couple', 'zodiac'].includes(mode)) {
+    if (!mode || !VALID_MODES.includes(mode)) {
       return res.status(400).json({ error: '올바른 분석 모드를 선택해주세요.' });
     }
 
-    // 시스템 프롬프트 구성 (constants의 GET_MODE_PROMPT 로직 이관 필요)
+    // 시스템 프롬프트 구성
     const systemPrompt = buildSystemPrompt(mode, profile);
+
+    // systemInstruction으로 시스템 프롬프트 전달 (매 메시지마다 반복 전송하지 않음)
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction: systemPrompt,
+    });
 
     // 슬라이딩 윈도우 적용
     const recentHistory = getRecentHistory(history || [], 5);
 
+    // 히스토리가 model로 끝나도록 보정 (Gemini API 요구사항)
+    const formattedHistory = recentHistory.map((msg: any) => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.text }],
+    }));
+
     // Gemini API 호출
     const chat = model.startChat({
-      history: recentHistory.map((msg: any) => ({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.text }],
-      })),
+      history: formattedHistory,
     });
 
-    const result = await chat.sendMessage(systemPrompt + '\n\n' + message);
+    const result = await chat.sendMessage(message);
     const response = await result.response;
     const text = response.text();
 
@@ -173,8 +184,8 @@ function buildSystemPrompt(mode: string, profile: any): string {
 ${specificInstructions[mode] || specificInstructions['integrated']}
 
 **사용자 프로필:**
-- 이름: ${profile.name || '미상'}
-- MBTI: ${profile.mbti || '미상'}
-- 혈액형: ${profile.bloodType || '미상'}형
+- 이름: ${profile?.name || '미상'}
+- MBTI: ${profile?.mbti || '미상'}
+- 혈액형: ${profile?.bloodType || '미상'}형
 `;
 }

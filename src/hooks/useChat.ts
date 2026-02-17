@@ -115,9 +115,8 @@ export const useChat = (): UseChatReturn => {
     setIsLoading(true);
 
     try {
-      // 서버 API로 메시지 전송 (히스토리 포함)
-      const currentMessages = [...messagesRef.current, newUserMsg];
-      const response = await sendMessage(text, mode, profile, currentMessages);
+      // 서버 API로 메시지 전송 (히스토리는 이전 메시지만, 현재 메시지 제외)
+      const response = await sendMessage(text, mode, profile, messagesRef.current);
 
       if (response.depth !== null) {
         setDepthScore(response.depth);
