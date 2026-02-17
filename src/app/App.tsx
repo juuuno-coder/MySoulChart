@@ -316,7 +316,7 @@ const App: React.FC = () => {
         )}
 
         {/* Main Content Area - Route based rendering */}
-        <main className={`flex-1 flex flex-col relative z-10 ${!isSessionActive && currentRoute.path === 'home' ? 'hidden md:flex' : 'flex'}`}>
+        <main className={`flex-1 flex flex-col relative z-10 ${currentRoute.path === 'home' ? 'overflow-y-auto' : ''} ${!isSessionActive && currentRoute.path === 'home' ? 'hidden md:flex' : 'flex'}`}>
           <AnimatePresence mode="wait">
             {/* Route: View Chart (권한으로 타인 차트 보기) */}
             {currentRoute.path === 'view' && (
@@ -450,7 +450,7 @@ const App: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
-                className="w-full h-full"
+                className="w-full min-h-full"
               >
                 <LandingPage onSelectProduct={handleSelectProduct} />
               </motion.div>
