@@ -1,13 +1,12 @@
 import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import ControlPanel from '../components/control/ControlPanel';
 import ChatInterface from '../components/chat/ChatInterface';
 import LandingPage from '../components/pages/LandingPage';
 import ConversationalForm from '../components/forms/ConversationalForm';
 import ProductFormSidebar from '../components/sidebars/ProductFormSidebar';
 import Toast from '../components/ui/Toast';
-import MobileDrawer from '../components/ui/MobileDrawer';
 import LoadingOverlay from '../components/ui/LoadingOverlay';
+import KakaoLoginButton from '../components/auth/KakaoLoginButton';
 
 // Lazy loaded components (무거운 컴포넌트들)
 const ChartDashboard = lazy(() => import('../components/chart/ChartDashboard'));
@@ -20,7 +19,7 @@ import { useProfile } from '../hooks/useProfile';
 import { useChart } from '../hooks/useChart';
 import { useRouter } from '../hooks/useRouter';
 import { useSessionStartTracking, useModeSwitch, useMessageTracking } from '../hooks/useAnalytics';
-import { Sparkles, BrainCircuit, RefreshCcw, Menu, Home } from 'lucide-react';
+import { Sparkles, BrainCircuit, RefreshCcw, Menu, X } from 'lucide-react';
 import { AnalysisMode, UserProfile } from '../types';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
@@ -41,13 +40,13 @@ const App: React.FC = () => {
   const trackMessage = useMessageTracking();
 
   // UI State
-  const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Track previous mode to detect changes
   const prevModeRef = useRef<AnalysisMode>('integrated');
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // 세션 활성 중 자동 저장
   useEffect(() => {
@@ -57,10 +56,23 @@ const App: React.FC = () => {
   // 모바일 화면 크기 감지
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile(); // 초기 체크
+    checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // 메뉴 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    if (isMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMenuOpen]);
 
   // 로그인 상태 추적 및 차트 로드
   useEffect(() => {
@@ -74,10 +86,10 @@ const App: React.FC = () => {
   }, [loadChart]);
 
   // 첫 방문 감지 (온보딩 모달)
+  const [showOnboarding, setShowOnboarding] = useState(false);
   useEffect(() => {
     const hasCompletedOnboarding = localStorage.getItem('onboarding_completed');
     if (!hasCompletedOnboarding && currentRoute.path === 'home') {
-      // 첫 방문 시 온보딩 모달 표시 (약간의 딜레이)
       const timer = setTimeout(() => {
         setShowOnboarding(true);
       }, 500);
@@ -122,6 +134,7 @@ const App: React.FC = () => {
     resetSession();
     resetChat();
     prevModeRef.current = 'integrated';
+    setIsMenuOpen(false);
   };
 
   // 메시지 전송 핸들러
@@ -129,14 +142,12 @@ const App: React.FC = () => {
     if (!isSessionActive) {
       setIsSessionActive(true);
     }
-    // GA4 추적: 메시지 전송
     trackMessage(mode, text.length, Math.floor(messages.length / 2) + 1);
     await sendUserMessage(text, mode, profile);
   };
 
   // 상품 선택 핸들러 (LandingPage에서 호출)
   const handleSelectProduct = (productId: string) => {
-    // productId를 AnalysisMode로 매핑
     const modeMap: Record<string, AnalysisMode> = {
       'face': 'face',
       'saju': 'saju',
@@ -156,22 +167,16 @@ const App: React.FC = () => {
 
   // 상품 입력 폼 제출 핸들러
   const handleProductFormSubmit = async (formData: Partial<UserProfile>) => {
-    // 병합된 프로필로 검증
     const mergedProfile = { ...profile, ...formData };
 
-    // 폼 검증
     const validation = validateProfile(mode, mergedProfile);
-
     if (!validation.isValid) {
       const errorMessages = Object.values(validation.errors).join('\n');
       showToast('warning', `필수 정보를 입력해주세요:\n${errorMessages}`);
       return;
     }
 
-    // 프로필 업데이트
     setProfile(mergedProfile as UserProfile);
-
-    // 세션 시작
     setIsSessionActive(true);
     await startSession(mode, mergedProfile as UserProfile);
   };
@@ -185,22 +190,19 @@ const App: React.FC = () => {
   const handleStartAnalysisFromChart = (analysisMode: AnalysisMode) => {
     setMode(analysisMode);
     navigate({ path: 'chat', mode: analysisMode });
-    setIsSessionActive(false); // 새로운 세션 시작
+    setIsSessionActive(false);
     resetChat();
   };
 
-  // 분석 완료 핸들러 (ChatInterface에서 호출)
+  // 분석 완료 핸들러
   const handleAnalysisComplete = async () => {
     if (!chart || !auth.currentUser) return;
 
-    // 현재 분석이 이미 완료되었는지 확인
     if (isAnalysisCompleted(mode)) {
-      // 이미 완료된 분석이면 그냥 홈으로 이동
       navigate({ path: 'home' });
       return;
     }
 
-    // 분석 결과 저장
     const analysisResult = {
       mode,
       completedAt: new Date(),
@@ -218,26 +220,30 @@ const App: React.FC = () => {
     };
 
     await completeAnalysis(mode, analysisResult);
-
-    // 홈으로 복귀
     navigate({ path: 'home' });
     setIsSessionActive(false);
     resetChat();
   };
 
+  // 모드 한글 이름
+  const getModeName = (m: AnalysisMode) => {
+    const names: Record<AnalysisMode, string> = {
+      face: '관상 분석', saju: '사주명리', zodiac: '별자리',
+      mbti: 'MBTI', blood: '혈액형', couple: '커플 궁합', integrated: '심층 분석',
+    };
+    return names[m] || '분석';
+  };
+
   return (
     <>
-      {/* Toast 알림 시스템 */}
       <Toast />
 
-      {/* 로딩 오버레이 (세션 시작 중) */}
       <AnimatePresence>
         {isLoading && !isSessionActive && (
           <LoadingOverlay message="영혼의 문을 여는 중..." />
         )}
       </AnimatePresence>
 
-      {/* 세션 복원 모달 */}
       {showRestoreModal && savedSessionData && (
         <Suspense fallback={null}>
           <SessionRestoreModal
@@ -250,7 +256,6 @@ const App: React.FC = () => {
         </Suspense>
       )}
 
-      {/* 온보딩 모달 */}
       <Suspense fallback={null}>
         <OnboardingModal
           isOpen={showOnboarding}
@@ -258,7 +263,7 @@ const App: React.FC = () => {
         />
       </Suspense>
 
-      <div className="flex flex-row-reverse h-screen w-full bg-cosmic-950 text-gray-100 overflow-hidden font-sans relative">
+      <div className="flex h-screen w-full bg-cosmic-950 text-gray-100 overflow-hidden font-sans relative">
         {/* Global Background Ambience */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-violet-900/10 rounded-full blur-[120px]"></div>
@@ -266,59 +271,10 @@ const App: React.FC = () => {
           <div className="absolute top-[20%] right-[20%] w-[20%] h-[20%] bg-indigo-900/10 rounded-full blur-[80px]"></div>
         </div>
 
-        {/* ControlPanel (chat 라우트에서만 표시) */}
-        {currentRoute.path === 'chat' && (
-          <>
-            {/* 데스크톱: 사이드바로 ControlPanel 표시 */}
-            <div className="hidden md:flex">
-              <ControlPanel
-                profile={profile}
-                setProfile={setProfile}
-                mode={mode}
-                onModeChange={handleModeSelect}
-                onStartSession={handleStartSession}
-                onReset={handleReset}
-                depthScore={depthScore}
-                isSessionActive={isSessionActive}
-              />
-            </div>
-
-            {/* 모바일: 세션 미시작 시 ControlPanel 직접 표시 */}
-            {!isSessionActive && (
-              <div className="flex md:hidden w-full">
-                <ControlPanel
-                  profile={profile}
-                  setProfile={setProfile}
-                  mode={mode}
-                  onModeChange={handleModeSelect}
-                  onStartSession={handleStartSession}
-                  onReset={handleReset}
-                  depthScore={depthScore}
-                  isSessionActive={isSessionActive}
-                />
-              </div>
-            )}
-
-            {/* 모바일: 세션 시작 후 드로어로 ControlPanel 접근 */}
-            <MobileDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)}>
-              <ControlPanel
-                profile={profile}
-                setProfile={setProfile}
-                mode={mode}
-                onModeChange={handleModeSelect}
-                onStartSession={handleStartSession}
-                onReset={handleReset}
-                depthScore={depthScore}
-                isSessionActive={isSessionActive}
-              />
-            </MobileDrawer>
-          </>
-        )}
-
-        {/* Main Content Area - Route based rendering */}
-        <main className={`flex-1 flex flex-col relative z-10 ${currentRoute.path === 'home' ? 'overflow-y-auto' : ''} ${!isSessionActive && currentRoute.path === 'home' ? 'hidden md:flex' : 'flex'}`}>
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col relative z-10 overflow-hidden">
           <AnimatePresence mode="wait">
-            {/* Route: View Chart (권한으로 타인 차트 보기) */}
+            {/* Route: View Chart */}
             {currentRoute.path === 'view' && (
               <motion.div
                 key="view"
@@ -334,7 +290,7 @@ const App: React.FC = () => {
               </motion.div>
             )}
 
-            {/* Route: Chat (분석 진행 중) */}
+            {/* Route: Chat */}
             {currentRoute.path === 'chat' && (
               <motion.div
                 key="chat"
@@ -342,103 +298,137 @@ const App: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
-                className="w-full h-full"
+                className="w-full h-full flex flex-col"
               >
-                <>
-                  {!isSessionActive ? (
-                /* 세션 시작 전: 대화형 입력 + 사이드바 */
-                <>
-                  {/* 입력 사이드바 (PC만, 오른쪽) */}
-                  <aside className="hidden lg:block w-96 h-screen overflow-y-auto bg-cosmic-900/50 border-l border-cosmic-800">
-                    <ProductFormSidebar
-                      mode={mode}
-                      profile={profile}
-                      onChange={updateMainProfile}
-                      completedAnalyses={chart?.completedCount || 0}
-                    />
-                  </aside>
-
-                  {/* 메인 컨텐츠 (대화형 입력) */}
-                  <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 py-16 overflow-y-auto">
-                    {/* 홈 버튼 */}
-                    <button
-                      onClick={() => navigate({ path: 'home' })}
-                      className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-xl border border-cosmic-700 text-starlight-300 hover:bg-cosmic-800/50 transition-colors z-20"
-                    >
-                      <Home className="w-4 h-4" />
-                      <span className="hidden md:inline">홈으로</span>
-                    </button>
-
-                    <ConversationalForm
-                      mode={mode}
-                      profile={profile}
-                      onSubmit={handleProductFormSubmit}
-                      onCancel={handleProductFormCancel}
-                      onChange={updateMainProfile}
-                    />
-                  </div>
-                </>
-              ) : (
-                /* 세션 활성 중: 채팅 인터페이스 */
-                <>
-                  {/* Header */}
-                  <header className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-cosmic-950 via-cosmic-950/80 to-transparent z-20 flex items-center justify-between px-6 pointer-events-none">
-                    <div className="flex items-center gap-3 text-nebula-200 pointer-events-auto">
-                      {/* 홈 버튼 */}
-                      <button
-                        onClick={() => navigate({ path: 'home' })}
-                        className="w-8 h-8 rounded-full bg-cosmic-800/80 backdrop-blur-sm flex items-center justify-center border border-cosmic-700 text-gray-400 hover:text-white transition-colors"
-                        aria-label="홈으로"
-                      >
-                        <Home size={16} />
-                      </button>
-
-                      {/* 모바일 햄버거 메뉴 */}
-                      <button
-                        onClick={() => setIsDrawerOpen(true)}
-                        className="md:hidden w-8 h-8 rounded-full bg-cosmic-800/80 backdrop-blur-sm flex items-center justify-center border border-cosmic-700 text-gray-400 hover:text-white transition-colors"
-                        aria-label="설정 메뉴 열기"
-                      >
-                        <Menu size={16} />
-                      </button>
-
-                      <div className="w-8 h-8 rounded-full bg-nebula-500/10 flex items-center justify-center border border-nebula-500/20 shadow-[0_0_15px_rgba(212,175,55,0.15)]">
-                        <BrainCircuit className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h1 className="font-serif font-bold text-lg tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-starlight-200 to-nebula-400 drop-shadow-sm">My Soul Chart</h1>
-                        <p className="text-[10px] text-gray-500 font-sans tracking-widest uppercase">Soul Analysis</p>
-                      </div>
+                {/* 통합 헤더 - chat 라우트에서 항상 표시 */}
+                <header className="flex-shrink-0 h-14 bg-cosmic-950/90 backdrop-blur-xl border-b border-cosmic-800/50 flex items-center justify-between px-4 md:px-6 z-30 relative">
+                  {/* 좌측: 로고 (클릭 → 홈) */}
+                  <button
+                    onClick={() => {
+                      if (isSessionActive) {
+                        navigate({ path: 'home' });
+                        setIsSessionActive(false);
+                        resetChat();
+                      } else {
+                        navigate({ path: 'home' });
+                      }
+                    }}
+                    className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  >
+                    <div className="w-7 h-7 rounded-full bg-nebula-500/10 flex items-center justify-center border border-nebula-500/20">
+                      <BrainCircuit className="w-3.5 h-3.5 text-nebula-400" />
                     </div>
+                    <div className="hidden sm:block">
+                      <h1 className="font-serif font-bold text-sm tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-starlight-200 to-nebula-400">My Soul Chart</h1>
+                    </div>
+                  </button>
 
-                    <div className="flex items-center gap-3 pointer-events-auto">
-                      {/* Depth Score (Desktop only) */}
-                      <div className="hidden md:flex items-center gap-3 glass-panel px-4 py-1.5 rounded-full">
-                        <Sparkles size={14} className={depthScore >= 90 ? "text-emerald-400 animate-pulse" : "text-nebula-400"} />
-                        <span className="text-xs text-gray-300 font-medium tracking-wide">
-                          심층 분석 <span className="mx-1 text-gray-600">|</span> <span className={depthScore >= 90 ? "text-emerald-400 font-bold" : "text-nebula-200"}>{depthScore}%</span>
+                  {/* 중앙: 모드 표시 + Depth (세션 활성 시) */}
+                  {isSessionActive && (
+                    <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3">
+                      <div className="hidden md:flex items-center gap-2 glass-panel px-4 py-1.5 rounded-full">
+                        <Sparkles size={12} className={depthScore >= 90 ? "text-emerald-400 animate-pulse" : "text-nebula-400"} />
+                        <span className="text-[11px] text-gray-300 font-medium">
+                          {getModeName(mode)}
+                          <span className="mx-1.5 text-gray-600">|</span>
+                          <span className={depthScore >= 90 ? "text-emerald-400 font-bold" : "text-nebula-200"}>{depthScore}%</span>
                         </span>
                       </div>
-
-                      {/* Reset Button */}
-                      <button
-                        onClick={handleReset}
-                        className="w-8 h-8 rounded-full bg-cosmic-800 flex items-center justify-center border border-cosmic-700 text-gray-400 hover:text-white"
-                        aria-label="초기화"
-                      >
-                        <RefreshCcw size={14} />
-                      </button>
+                      <div className="flex md:hidden items-center gap-1.5 text-[11px] text-gray-400">
+                        <Sparkles size={10} className="text-nebula-400" />
+                        <span className="text-nebula-200 font-medium">{depthScore}%</span>
+                      </div>
                     </div>
-                  </header>
+                  )}
 
-                  <ChatInterface
-                    messages={messages}
-                    isLoading={isLoading}
-                    onSendMessage={handleSendMessage}
-                  />
-                </>
-              )}
-                </>
+                  {/* 우측: 햄버거 메뉴 */}
+                  <div className="relative" ref={menuRef}>
+                    <button
+                      onClick={() => setIsMenuOpen(!isMenuOpen)}
+                      className="w-8 h-8 rounded-lg bg-cosmic-800/80 flex items-center justify-center border border-cosmic-700 text-gray-400 hover:text-white transition-colors"
+                      aria-label="메뉴"
+                    >
+                      {isMenuOpen ? <X size={16} /> : <Menu size={16} />}
+                    </button>
+
+                    {/* 드롭다운 메뉴 */}
+                    <AnimatePresence>
+                      {isMenuOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute right-0 top-full mt-2 w-64 bg-cosmic-900 border border-cosmic-700 rounded-xl shadow-2xl overflow-hidden z-50"
+                        >
+                          {/* 카카오 로그인 */}
+                          <div className="p-4 border-b border-cosmic-800">
+                            <KakaoLoginButton />
+                          </div>
+
+                          {/* 메뉴 항목들 */}
+                          <div className="p-2">
+                            {isSessionActive && (
+                              <button
+                                onClick={handleReset}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-cosmic-800 transition-colors"
+                              >
+                                <RefreshCcw size={14} />
+                                상담 초기화
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                navigate({ path: 'home' });
+                                setIsMenuOpen(false);
+                              }}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-cosmic-800 transition-colors"
+                            >
+                              <BrainCircuit size={14} />
+                              다른 분석 선택
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </header>
+
+                {/* 콘텐츠 영역 */}
+                <div className="flex-1 flex overflow-hidden">
+                  {!isSessionActive ? (
+                    /* 세션 시작 전: 대화형 입력 + 사이드바 */
+                    <>
+                      {/* 메인 컨텐츠 (대화형 입력) */}
+                      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto px-4 py-8">
+                        <ConversationalForm
+                          mode={mode}
+                          profile={profile}
+                          onSubmit={handleProductFormSubmit}
+                          onCancel={handleProductFormCancel}
+                          onChange={updateMainProfile}
+                        />
+                      </div>
+
+                      {/* 입력 사이드바 (PC만, 오른쪽) */}
+                      <aside className="hidden lg:block w-96 flex-shrink-0 overflow-y-auto bg-cosmic-900/50 border-l border-cosmic-800">
+                        <ProductFormSidebar
+                          mode={mode}
+                          profile={profile}
+                          onChange={updateMainProfile}
+                          completedAnalyses={chart?.completedCount || 0}
+                        />
+                      </aside>
+                    </>
+                  ) : (
+                    /* 세션 활성 중: 채팅 인터페이스 */
+                    <ChatInterface
+                      messages={messages}
+                      isLoading={isLoading}
+                      onSendMessage={handleSendMessage}
+                    />
+                  )}
+                </div>
               </motion.div>
             )}
 
@@ -450,7 +440,7 @@ const App: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
-                className="w-full min-h-full"
+                className="w-full h-full overflow-y-auto"
               >
                 <LandingPage onSelectProduct={handleSelectProduct} />
               </motion.div>
