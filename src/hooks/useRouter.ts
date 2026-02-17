@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 
 export type Route =
   | { path: 'home' }
+  | { path: 'chart' }
   | { path: 'chat'; mode: string }
   | { path: 'view'; permissionId: string };
 
@@ -21,7 +22,9 @@ export function useRouter() {
   const navigate = (route: Route) => {
     let hash = '#/';
 
-    if (route.path === 'chat') {
+    if (route.path === 'chart') {
+      hash = '#/chart';
+    } else if (route.path === 'chat') {
       hash = `#/chat/${route.mode}`;
     } else if (route.path === 'view') {
       hash = `#/view/${route.permissionId}`;
@@ -41,6 +44,10 @@ function parseHash(): Route {
   }
 
   const parts = hash.split('/').filter(Boolean);
+
+  if (parts[0] === 'chart') {
+    return { path: 'chart' };
+  }
 
   if (parts[0] === 'chat' && parts[1]) {
     return { path: 'chat', mode: parts[1] };

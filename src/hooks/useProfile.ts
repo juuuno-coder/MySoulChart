@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { UserProfile, AnalysisMode, PersonData } from '../types';
+import { saveProfile as saveProfileToStorage, loadProfile as loadProfileFromStorage } from '../utils/storage';
 
 interface UseProfileReturn {
   profile: UserProfile;
@@ -34,15 +35,28 @@ const INITIAL_PROFILE: UserProfile = {
   }
 };
 
+/**
+ * localStorage에서 저장된 프로필을 초기값과 병합
+ */
+function getInitialProfile(): UserProfile {
+  const saved = loadProfileFromStorage();
+  if (!saved) return INITIAL_PROFILE;
+  return { ...INITIAL_PROFILE, ...saved };
+}
+
 export const useProfile = (): UseProfileReturn => {
-  const [profile, setProfile] = useState<UserProfile>(INITIAL_PROFILE);
+  const [profile, setProfile] = useState<UserProfile>(getInitialProfile);
   const [mode, setMode] = useState<AnalysisMode>('integrated');
 
   /**
-   * 본인 프로필 부분 업데이트
+   * 본인 프로필 부분 업데이트 + localStorage 자동 저장
    */
   const updateMainProfile = useCallback((updates: Partial<UserProfile>) => {
-    setProfile(prev => ({ ...prev, ...updates }));
+    setProfile(prev => {
+      const updated = { ...prev, ...updates };
+      saveProfileToStorage(updated);
+      return updated;
+    });
   }, []);
 
   /**

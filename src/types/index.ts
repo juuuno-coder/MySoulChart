@@ -1,7 +1,7 @@
 
 export type Role = 'user' | 'model';
 
-export type AnalysisMode = 'integrated' | 'blood' | 'mbti' | 'saju' | 'face' | 'couple' | 'zodiac';
+export type AnalysisMode = 'integrated' | 'blood' | 'mbti' | 'saju' | 'face' | 'couple' | 'zodiac' | 'unified';
 
 export type ZodiacSign =
   | 'aries' | 'taurus' | 'gemini' | 'cancer'

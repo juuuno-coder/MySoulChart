@@ -1,11 +1,12 @@
 // 종합 차트 관리 훅 (Phase 2I-3)
 import { useState, useCallback, useEffect } from 'react';
-import { UserChart, AnalysisResult, MODE_NAMES } from '../types/chart';
-import { AnalysisMode } from '../types';
+import { UserChart, AnalysisResult, SoulChartData, MODE_NAMES } from '../types/chart';
+import { AnalysisMode, UserProfile } from '../types';
 import { auth } from '../services/firebase';
 import { db } from '../services/firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { showToast } from '../utils/toast';
+import { generateSoulChart } from '../services/api';
 
 export function useChart() {
   const [chart, setChart] = useState<UserChart | null>(null);
@@ -124,6 +125,56 @@ export function useChart() {
     [chart]
   );
 
+  // 종합 영혼 차트 생성
+  const [isGeneratingSoulChart, setIsGeneratingSoulChart] = useState(false);
+
+  const generateAndSaveSoulChart = useCallback(
+    async (profile: Partial<UserProfile>) => {
+      const user = auth.currentUser;
+      if (!user || !chart || chart.completedCount < 5) return null;
+
+      setIsGeneratingSoulChart(true);
+      try {
+        // 개별 분석의 CardData를 모아서 API 호출
+        const analyses: Record<string, any> = {};
+        for (const [mode, result] of Object.entries(chart.completedAnalyses)) {
+          if (result) {
+            analyses[mode] = result.cardData;
+          }
+        }
+
+        // couple 분석이 있으면 포함
+        if (chart.couple) {
+          analyses.couple = chart.couple.cardData;
+        }
+
+        const soulChart = await generateSoulChart(profile, analyses);
+
+        // Firestore에 저장
+        const chartRef = doc(db, 'users', user.uid, 'userChart');
+        await updateDoc(chartRef, {
+          soulChart,
+          updatedAt: new Date(),
+        });
+
+        // 로컬 상태 업데이트
+        setChart((prev) =>
+          prev ? { ...prev, soulChart, updatedAt: new Date() } : prev
+        );
+
+        showToast('success', '종합 영혼 차트가 완성되었습니다!');
+        return soulChart;
+      } catch (error) {
+        console.error('종합 차트 생성 에러:', error);
+        showToast('error', '종합 차트 생성에 실패했습니다. 다시 시도해주세요.');
+        return null;
+      } finally {
+        setIsGeneratingSoulChart(false);
+      }
+    },
+    [chart]
+  );
+
   // 분석 완료 여부 확인
   const isAnalysisCompleted = useCallback(
     (mode: AnalysisMode): boolean => {
@@ -145,8 +196,10 @@ export function useChart() {
   return {
     chart,
     isLoading,
+    isGeneratingSoulChart,
     loadChart,
     completeAnalysis,
+    generateAndSaveSoulChart,
     isAnalysisCompleted,
     getProgress,
   };

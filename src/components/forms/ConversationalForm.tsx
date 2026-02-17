@@ -50,6 +50,71 @@ export default function ConversationalForm({ mode, profile, onSubmit, onCancel, 
   const getQuestions = (): Question[] => {
     const questions: Question[] = [];
 
+    // === 통합 상담 모드: 한 번에 모든 정보 수집 ===
+    if (mode === 'unified') {
+      questions.push({
+        id: 'name',
+        text: '이름을 알려주시게.\n영혼 차트에 새길 이름이니.',
+        type: 'text',
+        required: true,
+        placeholder: '예: 홍길동',
+      });
+
+      questions.push({
+        id: 'gender',
+        text: '성별을 알려주시게.',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'male', label: '남성' },
+          { value: 'female', label: '여성' },
+        ],
+      });
+
+      questions.push({
+        id: 'birthDate',
+        text: '언제 이 세상에 태어났는가?\n별과 사주, 모두 이 날짜에서 시작된다네.',
+        type: 'date',
+        required: true,
+      });
+
+      questions.push({
+        id: 'calendarType',
+        text: '양력인가, 음력인가?',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'solar', label: '양력' },
+          { value: 'lunar', label: '음력' },
+        ],
+      });
+
+      questions.push({
+        id: 'bloodType',
+        text: '그대의 혈액형은?\n피에는 성격의 비밀이 흐른다네.',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'A', label: 'A형' },
+          { value: 'B', label: 'B형' },
+          { value: 'O', label: 'O형' },
+          { value: 'AB', label: 'AB형' },
+        ],
+      });
+
+      questions.push({
+        id: 'mbti',
+        text: '그대의 MBTI 유형은?\n마음의 지도를 그려보세.',
+        type: 'text',
+        required: true,
+        placeholder: '예: INFP',
+      });
+
+      return questions;
+    }
+
+    // === 기존 개별 분석 모드 ===
+
     // 관상: 사진 업로드 (최우선)
     if (mode === 'face') {
       questions.push({

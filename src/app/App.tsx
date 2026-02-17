@@ -13,18 +13,21 @@ const ChartDashboard = lazy(() => import('../components/chart/ChartDashboard'));
 const ViewChart = lazy(() => import('../components/pages/ViewChart'));
 const SessionRestoreModal = lazy(() => import('../components/modals/SessionRestoreModal'));
 const OnboardingModal = lazy(() => import('../components/modals/OnboardingModal'));
+const CardCanvas = lazy(() => import('../components/card/CardCanvas'));
 import { useChat } from '../hooks/useChat';
 import { useSession } from '../hooks/useSession';
 import { useProfile } from '../hooks/useProfile';
 import { useChart } from '../hooks/useChart';
 import { useRouter } from '../hooks/useRouter';
 import { useSessionStartTracking, useModeSwitch, useMessageTracking } from '../hooks/useAnalytics';
-import { Sparkles, BrainCircuit, RefreshCcw, Menu, X } from 'lucide-react';
+import { Sparkles, BrainCircuit, RefreshCcw, Menu, X, Trophy, Home } from 'lucide-react';
 import { AnalysisMode, UserProfile } from '../types';
+import { CardData } from '../types/card';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { validateProfile } from '../utils/validation';
 import { showToast } from '../utils/toast';
+import { generateCard } from '../services/api';
 
 const App: React.FC = () => {
   // Custom Hooks
@@ -32,7 +35,7 @@ const App: React.FC = () => {
   const { messages, isLoading, depthScore, sendUserMessage, startSession, switchMode, resetChat, setMessages, setDepthScore } = useChat();
   const { isSessionActive, setIsSessionActive, showRestoreModal, savedSessionData, handleRestoreSession, handleNewSession, autoSaveSession, resetSession } = useSession();
   const { currentRoute, navigate } = useRouter();
-  const { chart, isLoading: isChartLoading, loadChart, completeAnalysis, isAnalysisCompleted } = useChart();
+  const { chart, isLoading: isChartLoading, isGeneratingSoulChart, loadChart, completeAnalysis, generateAndSaveSoulChart, isAnalysisCompleted } = useChart();
 
   // Analytics Hooks
   useSessionStartTracking(mode, !!profile.name);
@@ -43,6 +46,11 @@ const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // 결과 카드 상태
+  const [completionCardData, setCompletionCardData] = useState<CardData | null>(null);
+  const [isGeneratingCard, setIsGeneratingCard] = useState(false);
+  const cardGeneratedRef = useRef(false); // 중복 생성 방지
 
   // Track previous mode to detect changes
   const prevModeRef = useRef<AnalysisMode>('integrated');
@@ -84,6 +92,71 @@ const App: React.FC = () => {
     });
     return () => unsubscribe();
   }, [loadChart]);
+
+  // 심도 95%+ 도달 시 자동 카드/영혼차트 생성
+  useEffect(() => {
+    if (
+      depthScore >= 95 &&
+      isSessionActive &&
+      !isGeneratingCard &&
+      !completionCardData &&
+      !cardGeneratedRef.current &&
+      messages.length >= 6 // 최소 3턴 이상 대화
+    ) {
+      cardGeneratedRef.current = true;
+
+      // unified 모드: 대화에서 바로 영혼 차트 생성
+      if (mode === 'unified') {
+        setIsGeneratingCard(true);
+        const conversationHistory = messages.map((msg) => ({
+          role: msg.role === 'user' ? 'user' as const : 'assistant' as const,
+          text: msg.text,
+        }));
+
+        import('../services/api').then(({ generateSoulChartFromConversation }) => {
+          generateSoulChartFromConversation(profile, conversationHistory)
+            .then((soulChart) => {
+              // 영혼 차트 뷰로 전환
+              setIsSessionActive(false);
+              resetChat();
+              // chart 훅에 soulChart 저장은 별도 처리 필요 → 일단 로컬 상태로 전환
+              navigate({ path: 'chart' });
+              showToast('success', '영혼 차트가 완성되었습니다!');
+            })
+            .catch((error) => {
+              console.error('영혼 차트 생성 실패:', error);
+              showToast('error', '영혼 차트 생성에 실패했습니다. 다시 시도해주세요.');
+              cardGeneratedRef.current = false;
+            })
+            .finally(() => {
+              setIsGeneratingCard(false);
+            });
+        });
+        return;
+      }
+
+      // 개별 분석 모드: 결과 카드 생성
+      setIsGeneratingCard(true);
+      const conversationHistory = messages.map((msg) => ({
+        role: msg.role === 'user' ? 'user' as const : 'assistant' as const,
+        text: msg.text,
+      }));
+
+      generateCard(mode, profile, conversationHistory, depthScore)
+        .then((cardData) => {
+          setCompletionCardData(cardData);
+          showToast('success', '영혼의 문이 활짝 열렸습니다! 결과 카드가 생성되었습니다.');
+        })
+        .catch((error) => {
+          console.error('카드 생성 실패:', error);
+          showToast('error', '결과 카드 생성에 실패했습니다. 다시 시도해주세요.');
+          cardGeneratedRef.current = false; // 재시도 가능하도록
+        })
+        .finally(() => {
+          setIsGeneratingCard(false);
+        });
+    }
+  }, [depthScore, isSessionActive, isGeneratingCard, completionCardData, messages, mode, profile]);
 
   // 첫 방문 감지 (온보딩 모달)
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -133,6 +206,8 @@ const App: React.FC = () => {
   const handleReset = () => {
     resetSession();
     resetChat();
+    setCompletionCardData(null);
+    cardGeneratedRef.current = false;
     prevModeRef.current = 'integrated';
     setIsMenuOpen(false);
   };
@@ -143,7 +218,9 @@ const App: React.FC = () => {
       setIsSessionActive(true);
     }
     trackMessage(mode, text.length, Math.floor(messages.length / 2) + 1);
-    await sendUserMessage(text, mode, profile);
+    // Q&A 모드(integrated + soulChart)일 때 soulChart 데이터 전달
+    const soulChartForQnA = mode === 'integrated' && chart?.soulChart ? chart.soulChart : undefined;
+    await sendUserMessage(text, mode, profile, soulChartForQnA);
   };
 
   // 상품 선택 핸들러 (LandingPage에서 호출)
@@ -156,6 +233,7 @@ const App: React.FC = () => {
       'bloodtype': 'blood',
       'couple': 'couple',
       'integrated': 'integrated',
+      'unified': 'unified',
     };
 
     const analysisMode = modeMap[productId] || 'integrated';
@@ -163,20 +241,34 @@ const App: React.FC = () => {
     navigate({ path: 'chat', mode: analysisMode });
     setIsSessionActive(false);
     resetChat();
+    setCompletionCardData(null);
+    cardGeneratedRef.current = false;
   };
 
   // 상품 입력 폼 제출 핸들러
   const handleProductFormSubmit = async (formData: Partial<UserProfile>) => {
     const mergedProfile = { ...profile, ...formData };
 
-    const validation = validateProfile(mode, mergedProfile);
-    if (!validation.isValid) {
-      const errorMessages = Object.values(validation.errors).join('\n');
-      showToast('warning', `필수 정보를 입력해주세요:\n${errorMessages}`);
-      return;
+    // unified 모드는 별도 검증 (최소 이름, 혈액형, MBTI)
+    if (mode === 'unified') {
+      if (!mergedProfile.name || !mergedProfile.bloodType || !mergedProfile.mbti) {
+        showToast('warning', '이름, 혈액형, MBTI는 필수입니다.');
+        return;
+      }
+    } else {
+      const validation = validateProfile(mode, mergedProfile);
+      if (!validation.isValid) {
+        const errorMessages = Object.values(validation.errors).join('\n');
+        showToast('warning', `필수 정보를 입력해주세요:\n${errorMessages}`);
+        return;
+      }
     }
 
     setProfile(mergedProfile as UserProfile);
+    // localStorage에도 저장
+    import('../utils/storage').then(({ saveProfile }) => {
+      saveProfile(mergedProfile as UserProfile);
+    });
     setIsSessionActive(true);
     await startSession(mode, mergedProfile as UserProfile);
   };
@@ -192,37 +284,47 @@ const App: React.FC = () => {
     navigate({ path: 'chat', mode: analysisMode });
     setIsSessionActive(false);
     resetChat();
+    setCompletionCardData(null);
+    cardGeneratedRef.current = false;
   };
 
-  // 분석 완료 핸들러
+  // 분석 완료 → 차트 대시보드로 이동
   const handleAnalysisComplete = async () => {
-    if (!chart || !auth.currentUser) return;
-
-    if (isAnalysisCompleted(mode)) {
-      navigate({ path: 'home' });
-      return;
+    // 차트에 결과 저장 (로그인 시)
+    if (chart && auth.currentUser && !isAnalysisCompleted(mode) && completionCardData) {
+      const analysisResult = {
+        mode,
+        completedAt: new Date(),
+        cardData: completionCardData,
+        summary: completionCardData.headline,
+        depthScore,
+      };
+      await completeAnalysis(mode, analysisResult);
     }
 
-    const analysisResult = {
-      mode,
-      completedAt: new Date(),
-      cardData: {
-        userName: profile.name || '도인',
-        mode,
-        headline: `${profile.name || '도인'}님의 ${mode === 'face' ? '관상' : mode === 'zodiac' ? '별자리' : mode === 'mbti' ? 'MBTI' : mode === 'saju' ? '사주' : '혈액형'} 분석`,
-        traits: [],
-        advice: messages[messages.length - 1]?.text || '',
-        luckyItems: { color: '', number: 0, direction: '' },
-        depthScore,
-      },
-      summary: messages[messages.length - 1]?.text?.slice(0, 100) || '',
-      depthScore,
-    };
-
-    await completeAnalysis(mode, analysisResult);
-    navigate({ path: 'home' });
+    // 상태 초기화 + 차트 대시보드 이동 (로그인 시) / 홈 (비로그인)
+    if (isLoggedIn) {
+      navigate({ path: 'chart' });
+    } else {
+      navigate({ path: 'home' });
+    }
     setIsSessionActive(false);
     resetChat();
+    setCompletionCardData(null);
+    cardGeneratedRef.current = false;
+  };
+
+  // 종합 차트 생성 핸들러
+  const handleGenerateSoulChart = () => {
+    generateAndSaveSoulChart(profile);
+  };
+
+  // Q&A 모드 시작 핸들러
+  const handleStartQnA = () => {
+    setMode('integrated');
+    navigate({ path: 'chat', mode: 'integrated' });
+    setIsSessionActive(true);
+    startSession('integrated', profile);
   };
 
   // 모드 한글 이름
@@ -230,6 +332,7 @@ const App: React.FC = () => {
     const names: Record<AnalysisMode, string> = {
       face: '관상 분석', saju: '사주명리', zodiac: '별자리',
       mbti: 'MBTI', blood: '혈액형', couple: '커플 궁합', integrated: '심층 분석',
+      unified: '영혼 차트 상담',
     };
     return names[m] || '분석';
   };
@@ -396,11 +499,10 @@ const App: React.FC = () => {
 
                 {/* 콘텐츠 영역 */}
                 <div className="flex-1 flex overflow-hidden">
-                  {!isSessionActive ? (
-                    /* 세션 시작 전: 대화형 입력 + 사이드바 */
-                    <>
-                      {/* 메인 컨텐츠 (대화형 입력) */}
-                      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto px-4 py-8">
+                  {/* 메인 콘텐츠 */}
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    {!isSessionActive ? (
+                      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto scrollbar-hide px-4 py-8">
                         <ConversationalForm
                           mode={mode}
                           profile={profile}
@@ -409,26 +511,123 @@ const App: React.FC = () => {
                           onChange={updateMainProfile}
                         />
                       </div>
+                    ) : completionCardData ? (
+                      /* 분석 완료 → 결과 카드 화면 */
+                      <div className="flex-1 overflow-y-auto scrollbar-hide">
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.5 }}
+                          className="flex flex-col items-center px-4 py-8 md:py-12"
+                        >
+                          {/* 축하 헤더 */}
+                          <div className="text-center mb-8">
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                              className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-nebula-500/20 to-aurora-500/20 border border-nebula-500/30 mb-4"
+                            >
+                              <Trophy className="w-8 h-8 text-nebula-400" />
+                            </motion.div>
+                            <h2 className="text-2xl md:text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-starlight-200 to-nebula-400 mb-2">
+                              분석 완료!
+                            </h2>
+                            <p className="text-sm text-gray-400">
+                              {getModeName(mode)} 상담이 완료되었습니다. 결과 카드를 확인해보세요.
+                            </p>
+                          </div>
 
-                      {/* 입력 사이드바 (PC만, 오른쪽) */}
-                      <aside className="hidden lg:block w-96 flex-shrink-0 overflow-y-auto bg-cosmic-900/50 border-l border-cosmic-800">
-                        <ProductFormSidebar
-                          mode={mode}
-                          profile={profile}
-                          onChange={updateMainProfile}
-                          completedAnalyses={chart?.completedCount || 0}
+                          {/* 결과 카드 */}
+                          <Suspense fallback={
+                            <div className="flex items-center justify-center gap-2 text-nebula-300 py-20">
+                              <Sparkles className="w-5 h-5 animate-pulse" />
+                              <span>카드를 불러오는 중...</span>
+                            </div>
+                          }>
+                            <CardCanvas cardData={completionCardData} />
+                          </Suspense>
+
+                          {/* 홈으로 돌아가기 버튼 */}
+                          <div className="mt-8 flex flex-col sm:flex-row items-center gap-3">
+                            <button
+                              onClick={handleAnalysisComplete}
+                              className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-nebula-500/30 to-aurora-500/30 hover:from-nebula-500/40 hover:to-aurora-500/40 text-white rounded-xl font-medium transition-all border border-nebula-500/30 shadow-lg shadow-nebula-500/10"
+                            >
+                              <Home className="w-5 h-5" />
+                              다른 분석 하러 가기
+                            </button>
+                          </div>
+                        </motion.div>
+                      </div>
+                    ) : (
+                      /* 채팅 인터페이스 */
+                      <>
+                        <ChatInterface
+                          messages={messages}
+                          isLoading={isLoading}
+                          onSendMessage={handleSendMessage}
                         />
-                      </aside>
-                    </>
-                  ) : (
-                    /* 세션 활성 중: 채팅 인터페이스 */
-                    <ChatInterface
-                      messages={messages}
-                      isLoading={isLoading}
-                      onSendMessage={handleSendMessage}
+                        {/* 카드 생성 중 오버레이 */}
+                        <AnimatePresence>
+                          {isGeneratingCard && (
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="absolute inset-0 z-20 bg-cosmic-950/80 backdrop-blur-sm flex items-center justify-center"
+                            >
+                              <div className="text-center">
+                                <motion.div
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                                  className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-nebula-500/20 border border-nebula-500/30 mb-4"
+                                >
+                                  <Sparkles className="w-8 h-8 text-nebula-400" />
+                                </motion.div>
+                                <p className="text-lg font-serif text-nebula-200">영혼의 결과를 정리하고 있습니다...</p>
+                                <p className="text-sm text-gray-500 mt-2">잠시만 기다려주세요</p>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </>
+                    )}
+                  </div>
+
+                  {/* 사이드바 (PC만, 항상 표시) */}
+                  <aside className="hidden lg:block w-96 flex-shrink-0 overflow-y-auto scrollbar-hide bg-cosmic-900/50 border-l border-cosmic-800">
+                    <ProductFormSidebar
+                      mode={mode}
+                      profile={profile}
+                      onChange={updateMainProfile}
+                      completedAnalyses={chart?.completedCount || 0}
                     />
-                  )}
+                  </aside>
                 </div>
+              </motion.div>
+            )}
+
+            {/* Route: Chart Dashboard */}
+            {currentRoute.path === 'chart' && chart && (
+              <motion.div
+                key="chart"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="w-full h-full overflow-y-auto"
+              >
+                <Suspense fallback={<LoadingOverlay message="차트를 불러오는 중..." />}>
+                  <ChartDashboard
+                    chart={chart}
+                    profile={profile}
+                    onStartAnalysis={handleStartAnalysisFromChart}
+                    onStartQnA={handleStartQnA}
+                    isGeneratingSoulChart={isGeneratingSoulChart}
+                    onGenerateSoulChart={handleGenerateSoulChart}
+                  />
+                </Suspense>
               </motion.div>
             )}
 

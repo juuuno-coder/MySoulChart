@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Message, AnalysisMode, UserProfile } from '../types';
+import { SoulChartData } from '../types/chart';
 import { sendMessage, initializeSession } from '../services/api';
 import { showToast } from '../utils/toast';
 
@@ -7,7 +8,7 @@ interface UseChatReturn {
   messages: Message[];
   isLoading: boolean;
   depthScore: number;
-  sendUserMessage: (text: string, mode: AnalysisMode, profile: UserProfile) => Promise<void>;
+  sendUserMessage: (text: string, mode: AnalysisMode, profile: UserProfile, soulChart?: SoulChartData) => Promise<void>;
   startSession: (mode: AnalysisMode, profile: UserProfile) => Promise<void>;
   switchMode: (mode: AnalysisMode, profile: UserProfile) => Promise<void>;
   resetChat: () => void;
@@ -102,7 +103,8 @@ export const useChat = (): UseChatReturn => {
   const sendUserMessage = useCallback(async (
     text: string,
     mode: AnalysisMode,
-    profile: UserProfile
+    profile: UserProfile,
+    soulChart?: SoulChartData
   ) => {
     const newUserMsg: Message = {
       id: `user-${Date.now()}`,
@@ -116,7 +118,7 @@ export const useChat = (): UseChatReturn => {
 
     try {
       // 서버 API로 메시지 전송 (히스토리는 이전 메시지만, 현재 메시지 제외)
-      const response = await sendMessage(text, mode, profile, messagesRef.current);
+      const response = await sendMessage(text, mode, profile, messagesRef.current, soulChart);
 
       if (response.depth !== null) {
         setDepthScore(response.depth);
@@ -142,7 +144,7 @@ export const useChat = (): UseChatReturn => {
         5000,
         {
           label: '다시 시도',
-          onClick: () => sendUserMessage(text, mode, profile),
+          onClick: () => sendUserMessage(text, mode, profile, soulChart),
         }
       );
 

@@ -1,4 +1,4 @@
-// 상품 타입 정의
+// 상품 타입 정의 (integrated는 종합 차트 Q&A 모드로 내부 전용)
 export type ProductType =
   | 'face'          // 관상 분석
   | 'saju'          // 사주명리 운세
@@ -6,7 +6,7 @@ export type ProductType =
   | 'mbti'          // MBTI 인지구조
   | 'bloodtype'     // 혈액형 심리
   | 'couple'        // 커플궁합
-  | 'integrated';   // 통합 심층분석
+  | 'unified';      // 통합 상담 (영혼 차트)
 
 export interface Product {
   id: ProductType;
@@ -22,20 +22,8 @@ export interface Product {
   price?: number;          // 나중에 결제 기능 추가 시
 }
 
-// 상품 목록
+// 상품 목록 (6개 개별 분석, 종합 차트는 5개 완료 후 자동 생성)
 export const PRODUCTS: Product[] = [
-  {
-    id: 'integrated',
-    title: '통합 심층분석',
-    subtitle: '모든 분석을 한 번에',
-    description: '관상, 사주, 점성학, MBTI, 혈액형을 종합하여 당신의 영혼을 깊이 분석합니다.',
-    icon: 'BrainCircuit',
-    color: {
-      from: '#8b5cf6',  // nebula-500
-      to: '#60a5fa',    // starlight-500
-    },
-    badge: '인기',
-  },
   {
     id: 'face',
     title: '관상 분석',
@@ -102,5 +90,17 @@ export const PRODUCTS: Product[] = [
       to: '#60a5fa',    // starlight-500
     },
     badge: 'NEW',
+  },
+  {
+    id: 'unified',
+    title: '나의 영혼 차트',
+    subtitle: '하나의 상담으로 완성',
+    description: '관상, 별자리, MBTI, 사주, 혈액형을 하나의 연속 상담에서 분석하여 종합 영혼 차트를 완성합니다.',
+    icon: 'Sparkles',
+    color: {
+      from: '#f59e0b',  // gold
+      to: '#a78bfa',    // nebula-400
+    },
+    badge: '추천',
   },
 ];

@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { AnalysisMode, Message, UserProfile } from '../types';
 import { CardData } from '../types/card';
+import { SoulChartData } from '../types/chart';
 import { GET_MODE_PROMPT, GET_GREETING_TRIGGER } from '../constants/prompts';
 
 // 로컬 개발 환경 감지
@@ -149,7 +150,8 @@ export async function sendMessage(
   message: string,
   mode: AnalysisMode,
   profile: UserProfile,
-  history: Message[]
+  history: Message[],
+  soulChart?: SoulChartData
 ): Promise<{ text: string; depth: number }> {
   // 로컬 개발: 클라이언트에서 직접 호출
   if (IS_LOCAL_DEV && localModel) {
@@ -163,20 +165,27 @@ export async function sendMessage(
 
   // 프로덕션: Serverless Functions 호출
   try {
+    const body: any = {
+      message,
+      mode,
+      profile,
+      history: history.map(msg => ({
+        role: msg.role,
+        text: msg.text,
+      })),
+    };
+
+    // Q&A 모드: soulChart 데이터 전달
+    if (soulChart) {
+      body.soulChart = soulChart;
+    }
+
     const response = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        message,
-        mode,
-        profile,
-        history: history.map(msg => ({
-          role: msg.role,
-          text: msg.text,
-        })),
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -422,4 +431,267 @@ export async function generateCard(
     console.error('Card Generation Error:', error);
     throw new Error(error.message || '카드 생성 중 오류가 발생했습니다');
   }
+}
+
+/**
+ * 5개 개별 분석을 종합하여 영혼 차트 생성
+ * @param profile 사용자 프로필
+ * @param analyses 개별 분석 결과 (모드 → CardData)
+ * @returns 종합 영혼 차트 데이터
+ */
+export async function generateSoulChart(
+  profile: Partial<UserProfile>,
+  analyses: Record<string, CardData>,
+): Promise<SoulChartData> {
+  // 로컬 개발: 클라이언트에서 직접 호출
+  if (IS_LOCAL_DEV && localModel) {
+    try {
+      return await generateSoulChartLocal(profile, analyses);
+    } catch (error: any) {
+      console.error('[DEV] Local Soul Chart Generation Error:', error);
+      throw error;
+    }
+  }
+
+  // 프로덕션: Serverless Functions 호출
+  try {
+    const response = await fetch(`${API_BASE_URL}/generate-soul-chart`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ profile, analyses }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || '종합 차트 생성 오류가 발생했습니다');
+    }
+
+    const data = await response.json();
+    return data.soulChart;
+  } catch (error: any) {
+    console.error('Soul Chart Generation Error:', error);
+    throw new Error(error.message || '종합 차트 생성 중 오류가 발생했습니다');
+  }
+}
+
+/**
+ * 통합 상담 대화에서 직접 영혼 차트 생성 (unified 모드)
+ */
+export async function generateSoulChartFromConversation(
+  profile: Partial<UserProfile>,
+  conversationHistory: Array<{ role: 'user' | 'assistant'; text: string }>,
+): Promise<SoulChartData> {
+  // 로컬 개발
+  if (IS_LOCAL_DEV && localModel) {
+    return generateSoulChartFromConversationLocal(profile, conversationHistory);
+  }
+
+  // 프로덕션
+  const response = await fetch(`${API_BASE_URL}/generate-soul-chart`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      profile,
+      conversationHistory,
+      mode: 'unified',
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || '영혼 차트 생성 오류가 발생했습니다');
+  }
+
+  const data = await response.json();
+  return data.soulChart;
+}
+
+/**
+ * 로컬 개발용: 대화 기반 영혼 차트 생성
+ */
+async function generateSoulChartFromConversationLocal(
+  profile: Partial<UserProfile>,
+  conversationHistory: Array<{ role: 'user' | 'assistant'; text: string }>,
+): Promise<SoulChartData> {
+  if (!localModel) {
+    throw new Error('로컬 Gemini API가 초기화되지 않았습니다');
+  }
+
+  const conversationText = conversationHistory
+    .map((msg) => `${msg.role === 'user' ? '내담자' : '도사'}: ${msg.text}`)
+    .join('\n\n');
+
+  const prompt = `
+당신은 영혼 차트 마스터입니다.
+아래 통합 상담 대화를 분석하여 영혼 차트를 완성하세요.
+
+**내담자 정보:**
+- 이름: ${profile.name}
+- 생년월일: ${profile.birthDate || '미입력'}
+- MBTI: ${profile.mbti || '미입력'}
+- 혈액형: ${profile.bloodType || '미입력'}
+
+**통합 상담 대화:**
+${conversationText}
+
+---
+
+\`\`\`json
+{
+  "soulType": "영혼 유형 이름 (4-8글자)",
+  "soulDescription": "영혼 유형 상세 설명 (3-5문장)",
+  "dimensions": { "intuition": 0-100, "emotion": 0-100, "logic": 0-100, "social": 0-100, "creativity": 0-100 },
+  "coreTraits": ["핵심 성격 특성 5-7개"],
+  "hiddenDesire": "이 사람이 진짜로 원하는 것",
+  "lifeAdvice": "인생 조언 2-3문장",
+  "luckyElements": { "color": "행운의 색상", "number": 1-99, "direction": "행운의 방향", "season": "행운의 계절", "element": "오행 주 원소" }
+}
+\`\`\`
+`;
+
+  const result = await localModel.generateContent(prompt);
+  const response = await result.response;
+  const text = response.text();
+
+  const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error('AI 응답을 파싱할 수 없습니다');
+  }
+
+  const jsonText = jsonMatch[1] || jsonMatch[0];
+  const parsedData = JSON.parse(jsonText);
+  const clamp = (v: number, min = 0, max = 100) => Math.max(min, Math.min(max, Math.round(v)));
+
+  return {
+    soulType: parsedData.soulType,
+    soulDescription: parsedData.soulDescription,
+    dimensions: {
+      intuition: clamp(parsedData.dimensions?.intuition || 50),
+      emotion: clamp(parsedData.dimensions?.emotion || 50),
+      logic: clamp(parsedData.dimensions?.logic || 50),
+      social: clamp(parsedData.dimensions?.social || 50),
+      creativity: clamp(parsedData.dimensions?.creativity || 50),
+    },
+    coreTraits: (parsedData.coreTraits || []).slice(0, 7),
+    hiddenDesire: parsedData.hiddenDesire || '',
+    lifeAdvice: parsedData.lifeAdvice || '',
+    luckyElements: {
+      color: parsedData.luckyElements?.color || '청록색',
+      number: clamp(parsedData.luckyElements?.number || 7, 1, 99),
+      direction: parsedData.luckyElements?.direction || '동쪽',
+      season: parsedData.luckyElements?.season || '봄',
+      element: parsedData.luckyElements?.element || '木',
+    },
+    createdAt: new Date(),
+    includesCouple: false,
+  };
+}
+
+/**
+ * 로컬 개발용: 클라이언트에서 직접 영혼 차트 생성
+ */
+async function generateSoulChartLocal(
+  profile: Partial<UserProfile>,
+  analyses: Record<string, CardData>,
+): Promise<SoulChartData> {
+  if (!localModel) {
+    throw new Error('로컬 Gemini API가 초기화되지 않았습니다');
+  }
+
+  const modeNames: Record<string, string> = {
+    face: '관상', zodiac: '별자리', mbti: 'MBTI',
+    saju: '사주명리', blood: '혈액형', couple: '커플 궁합',
+  };
+
+  const analysisTexts = Object.entries(analyses)
+    .map(([mode, data]) => {
+      return `[${modeNames[mode] || mode} 분석 결과]
+headline: "${data.headline}"
+traits: ${(data.traits || []).join(', ')}
+advice: "${data.advice}"
+depthScore: ${data.depthScore || 100}`;
+    })
+    .join('\n\n');
+
+  const prompt = `
+당신은 영혼 차트 마스터입니다.
+아래 분석 결과를 종합하여 이 사람의 영혼 차트를 완성하세요.
+
+**내담자 정보:**
+- 이름: ${profile.name}
+- 생년월일: ${profile.birthDate || '미입력'}
+- MBTI: ${profile.mbti || '미입력'}
+- 혈액형: ${profile.bloodType || '미입력'}
+
+**개별 분석 결과:**
+${analysisTexts}
+
+---
+
+위 데이터를 교차 검증하고 종합하여, 다음 JSON을 생성하세요.
+
+\`\`\`json
+{
+  "soulType": "영혼 유형 이름 (4-8글자)",
+  "soulDescription": "영혼 유형 상세 설명 (3-5문장)",
+  "dimensions": {
+    "intuition": 0-100,
+    "emotion": 0-100,
+    "logic": 0-100,
+    "social": 0-100,
+    "creativity": 0-100
+  },
+  "coreTraits": ["핵심 성격 특성 5-7개"],
+  "hiddenDesire": "이 사람이 진짜로 원하는 것",
+  "lifeAdvice": "인생 조언 2-3문장",
+  "luckyElements": {
+    "color": "행운의 색상",
+    "number": 1-99,
+    "direction": "행운의 방향",
+    "season": "행운의 계절",
+    "element": "오행 주 원소 (木/火/土/金/水)"
+  }
+}
+\`\`\`
+`;
+
+  const result = await localModel.generateContent(prompt);
+  const response = await result.response;
+  const text = response.text();
+
+  const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error('AI 응답을 파싱할 수 없습니다');
+  }
+
+  const jsonText = jsonMatch[1] || jsonMatch[0];
+  const parsedData = JSON.parse(jsonText);
+
+  const clamp = (v: number, min = 0, max = 100) => Math.max(min, Math.min(max, Math.round(v)));
+
+  return {
+    soulType: parsedData.soulType,
+    soulDescription: parsedData.soulDescription,
+    dimensions: {
+      intuition: clamp(parsedData.dimensions?.intuition || 50),
+      emotion: clamp(parsedData.dimensions?.emotion || 50),
+      logic: clamp(parsedData.dimensions?.logic || 50),
+      social: clamp(parsedData.dimensions?.social || 50),
+      creativity: clamp(parsedData.dimensions?.creativity || 50),
+    },
+    coreTraits: (parsedData.coreTraits || []).slice(0, 7),
+    hiddenDesire: parsedData.hiddenDesire || '',
+    lifeAdvice: parsedData.lifeAdvice || '',
+    luckyElements: {
+      color: parsedData.luckyElements?.color || '청록색',
+      number: clamp(parsedData.luckyElements?.number || 7, 1, 99),
+      direction: parsedData.luckyElements?.direction || '동쪽',
+      season: parsedData.luckyElements?.season || '봄',
+      element: parsedData.luckyElements?.element || '木',
+    },
+    createdAt: new Date(),
+    includesCouple: !!analyses.couple,
+  };
 }

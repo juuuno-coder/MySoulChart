@@ -83,6 +83,36 @@ export const clearSession = () => {
   }
 };
 
+// ===== 프로필 영속성 =====
+const PROFILE_KEY = 'vibeProfile';
+
+/**
+ * 프로필을 localStorage에 저장 (재방문 시 자동 채움용)
+ * - faceImage(Base64)는 저장하지 않음
+ */
+export const saveProfile = (profile: UserProfile): void => {
+  try {
+    const { faceImage, ...safeProfile } = profile;
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(safeProfile));
+  } catch (error) {
+    console.warn('프로필 저장 실패:', error);
+  }
+};
+
+/**
+ * 저장된 프로필 불러오기
+ */
+export const loadProfile = (): Partial<UserProfile> | null => {
+  try {
+    const data = localStorage.getItem(PROFILE_KEY);
+    if (!data) return null;
+    return JSON.parse(data);
+  } catch (error) {
+    console.warn('프로필 불러오기 실패:', error);
+    return null;
+  }
+};
+
 /**
  * 저장된 세션의 마지막 활동 시간을 읽기 좋은 문자열로 변환
  */

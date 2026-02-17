@@ -146,6 +146,123 @@ body {
   animation: fade-in 0.5s ease-out;
 }
 
+/* ===== Soul Chart - Astro Wheel ===== */
+
+/* 느린 회전 장식 링 */
+@keyframes astro-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.astro-rotate {
+  animation: astro-rotate 120s linear infinite;
+}
+
+/* 회전하는 그라데이션 보더 (Aceternity style) */
+@keyframes border-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.astro-border-spin {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    #8b5cf6 10%,
+    transparent 20%,
+    transparent 30%,
+    #14b8a6 40%,
+    transparent 50%,
+    transparent 60%,
+    #f9a8d4 70%,
+    transparent 80%,
+    transparent 90%,
+    #fde68a 95%,
+    transparent 100%
+  );
+  animation: border-spin 6s linear infinite;
+}
+
+/* 유성(Meteor) 라인 */
+@keyframes meteor {
+  0% {
+    transform: rotate(215deg) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(215deg) translateX(-400px);
+    opacity: 0;
+  }
+}
+
+.meteor-line {
+  width: 1px;
+  height: 1px;
+  animation: meteor 8s linear infinite;
+}
+
+.meteor-line::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 60px;
+  height: 1px;
+  background: linear-gradient(90deg, #8b5cf6, transparent);
+}
+
+.meteor-line::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #c4b5fd;
+  box-shadow: 0 0 8px 2px rgba(139, 92, 246, 0.6);
+}
+
+/* Soul Type 텍스트 그라데이션 (애니메이션) */
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.soul-type-gradient {
+  background: linear-gradient(270deg, #c4b5fd, #8b5cf6, #14b8a6, #fde68a, #c4b5fd);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-shift 6s ease-in-out infinite;
+}
+
+/* 특성 칩 */
+.trait-chip {
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: rgba(139, 92, 246, 0.1);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  transition: all 0.3s ease;
+}
+
+.trait-chip:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+}
+
 /* ===== Typography System ===== */
 .text-heading-1 {
   font-family: var(--font-serif);

@@ -1,4 +1,5 @@
 import { AnalysisMode, ZodiacSign } from './index';
+import { SoulChartData } from './chart';
 
 /**
  * 결과 카드에 표시될 데이터
@@ -50,4 +51,19 @@ export interface GenerateCardRequest {
  */
 export interface GenerateCardResponse {
   cardData: CardData;
+}
+
+/**
+ * 종합 영혼 차트용 카드 데이터 (공유/저장용)
+ */
+export interface SoulChartCardData {
+  userName: string;
+  soulType: string;
+  soulDescription: string;
+  dimensions: SoulChartData['dimensions'];
+  coreTraits: string[];
+  lifeAdvice: string;
+  luckyElements: SoulChartData['luckyElements'];
+  completedModes: AnalysisMode[];
+  createdAt: Date;
 }
