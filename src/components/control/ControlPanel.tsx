@@ -264,21 +264,82 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-[10px] text-gray-500 mb-1.5 ml-1">태어난 시간</label>
-              <input
-                type="time"
-                name="birthTime"
-                value={profile.birthTime}
-                onChange={handleProfileChange}
-                className="w-full glass-input rounded-md px-2 py-2.5 text-[11px] focus:outline-none"
-              />
+              <div className="flex gap-1">
+                <select
+                  value={(() => {
+                    if (!profile.birthTime) return '';
+                    const [h] = profile.birthTime.split(':');
+                    return parseInt(h) < 12 ? 'AM' : 'PM';
+                  })()}
+                  onChange={(e) => {
+                    const period = e.target.value;
+                    if (!period) {
+                      setProfile({ ...profile, birthTime: '' });
+                      return;
+                    }
+                    const [h, m] = (profile.birthTime || '12:00').split(':');
+                    let hour = parseInt(h);
+                    if (period === 'AM' && hour >= 12) hour -= 12;
+                    if (period === 'PM' && hour < 12) hour += 12;
+                    setProfile({ ...profile, birthTime: `${String(hour).padStart(2, '0')}:${m || '00'}` });
+                  }}
+                  className="w-[52px] glass-input rounded-md px-1 py-2.5 text-[10px] focus:outline-none appearance-none text-center"
+                >
+                  <option value="">--</option>
+                  <option value="AM" className="bg-cosmic-900">오전</option>
+                  <option value="PM" className="bg-cosmic-900">오후</option>
+                </select>
+                <select
+                  value={(() => {
+                    if (!profile.birthTime) return '';
+                    const [h] = profile.birthTime.split(':');
+                    let hour = parseInt(h) % 12;
+                    if (hour === 0) hour = 12;
+                    return String(hour);
+                  })()}
+                  onChange={(e) => {
+                    if (!e.target.value) return;
+                    const [h, m] = (profile.birthTime || '12:00').split(':');
+                    const isPM = parseInt(h) >= 12;
+                    let newHour = parseInt(e.target.value);
+                    if (newHour === 12) newHour = isPM ? 12 : 0;
+                    else if (isPM) newHour += 12;
+                    setProfile({ ...profile, birthTime: `${String(newHour).padStart(2, '0')}:${m || '00'}` });
+                  }}
+                  className="flex-1 glass-input rounded-md px-1 py-2.5 text-[10px] focus:outline-none appearance-none text-center"
+                >
+                  <option value="">시</option>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
+                    <option key={h} value={String(h)} className="bg-cosmic-900">{h}시</option>
+                  ))}
+                </select>
+                <select
+                  value={(() => {
+                    if (!profile.birthTime) return '';
+                    const parts = profile.birthTime.split(':');
+                    return parts[1] || '';
+                  })()}
+                  onChange={(e) => {
+                    const [h] = (profile.birthTime || '12:00').split(':');
+                    setProfile({ ...profile, birthTime: `${h}:${e.target.value}` });
+                  }}
+                  className="flex-1 glass-input rounded-md px-1 py-2.5 text-[10px] focus:outline-none appearance-none text-center"
+                >
+                  <option value="">분</option>
+                  {Array.from({ length: 12 }, (_, i) => i * 5).map(m => (
+                    <option key={m} value={String(m).padStart(2, '0')} className="bg-cosmic-900">{m}분</option>
+                  ))}
+                </select>
+              </div>
             </div>
              <div>
-              <label className="block text-[10px] text-gray-500 mb-1.5 ml-1">지역</label>
+              <label className="block text-[10px] text-gray-500 mb-1.5 ml-1">출생 지역</label>
               <input
                 type="text"
                 name="birthPlace"
                 value={profile.birthPlace}
                 onChange={handleProfileChange}
+                placeholder="예: 서울"
                 className="w-full glass-input rounded-md px-2 py-2.5 text-xs focus:outline-none"
               />
             </div>
