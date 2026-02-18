@@ -115,7 +115,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       history: formattedHistory,
     });
 
-    const result = await chat.sendMessage(message);
+    // face 모드 첫 메시지: 실제 얼굴 이미지를 Gemini에 전달
+    let messageContent: any = message;
+    if (mode === 'face' && profile?.faceImage && formattedHistory.length === 0) {
+      const imageData = profile.faceImage.includes(',')
+        ? profile.faceImage.split(',')[1]
+        : profile.faceImage;
+      messageContent = [
+        message,
+        {
+          inlineData: {
+            data: imageData,
+            mimeType: 'image/jpeg',
+          },
+        },
+      ];
+    }
+
+    const result = await chat.sendMessage(messageContent);
     const response = await result.response;
     const text = response.text();
 

@@ -218,6 +218,10 @@ export async function analyzeFace(
   nose: string;
   mouth: string;
   chin: string;
+  samjeong?: { upper: string; middle: string; lower: string };
+  eyebrows?: string;
+  ears?: string;
+  impression?: string;
 }> {
   // 로컬 개발: 클라이언트에서 직접 호출
   if (IS_LOCAL_DEV && localGenAI) {

@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserProfile, AnalysisMode, CalendarType, PersonData } from '../../types';
-import { Sparkles, ArrowRight, Upload, UserCheck, RefreshCw } from 'lucide-react';
+import { Sparkles, ArrowRight, Upload, UserCheck, RefreshCw, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AceternityInput } from '../ui/AceternityInput';
 import AceternityDateSelector from '../ui/AceternityDateSelector';
 import { loadProfile } from '../../utils/storage';
 import { validateProfile } from '../../utils/validation';
+import { analyzeFace } from '../../services/api';
+import { showToast } from '../../utils/toast';
 
 interface ConversationalFormProps {
   mode: AnalysisMode;
@@ -33,6 +35,7 @@ export default function ConversationalForm({ mode, profile, onSubmit, onCancel, 
   const [currentStep, setCurrentStep] = useState(0);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [currentValue, setCurrentValue] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // 재방문 사용자 감지
   const [showReturningCard, setShowReturningCard] = useState(false);
@@ -290,8 +293,45 @@ export default function ConversationalForm({ mode, profile, onSubmit, onCancel, 
   const isLastStep = currentStep === questions.length - 1;
 
   // 다음 단계
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!currentValue && currentQuestion.required) return;
+
+    // 관상 분석: 사진 업로드 후 AI 분석 호출
+    if (currentQuestion.id === 'faceImage' && imagePreview) {
+      setIsAnalyzing(true);
+      try {
+        const features = await analyzeFace(imagePreview);
+        const parts: string[] = [];
+        if (features.faceShape) parts.push(`얼굴형: ${features.faceShape}`);
+        if (features.samjeong) {
+          parts.push(`삼정 - 상정: ${features.samjeong.upper}, 중정: ${features.samjeong.middle}, 하정: ${features.samjeong.lower}`);
+        }
+        if (features.eyes) parts.push(`눈: ${features.eyes}`);
+        if (features.eyebrows) parts.push(`눈썹: ${features.eyebrows}`);
+        if (features.nose) parts.push(`코: ${features.nose}`);
+        if (features.mouth) parts.push(`입: ${features.mouth}`);
+        if (features.ears) parts.push(`귀: ${features.ears}`);
+        if (features.forehead) parts.push(`이마: ${features.forehead}`);
+        if (features.chin) parts.push(`턱: ${features.chin}`);
+        if (features.impression) parts.push(`종합 인상: ${features.impression}`);
+        const featuresText = parts.join(' / ');
+        onChange({ faceFeatures: featuresText });
+      } catch (error: any) {
+        setIsAnalyzing(false);
+        showToast('error', error.message || '관상 분석에 실패했습니다. 다른 사진을 시도해주세요.');
+        return; // 실패 시 진행하지 않음
+      }
+      setIsAnalyzing(false);
+
+      // faceImage는 handleImageUpload에서 이미 설정됨 → 'uploaded'로 덮어쓰지 않음
+      if (isLastStep) {
+        onSubmit(profile);
+      } else {
+        setCurrentStep(currentStep + 1);
+        setCurrentValue('');
+      }
+      return;
+    }
 
     const updatedProfile = mapToProfile(currentQuestion.id, currentValue);
     onChange(updatedProfile);
@@ -517,9 +557,19 @@ export default function ConversationalForm({ mode, profile, onSubmit, onCancel, 
             {imagePreview && (
               <button
                 onClick={handleNext}
-                className="w-full px-6 py-4 rounded-xl nebula-gradient text-white font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                disabled={isAnalyzing}
+                className="w-full px-6 py-4 rounded-xl nebula-gradient text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                다음 <ArrowRight className="w-5 h-5" />
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    관상을 읽는 중...
+                  </>
+                ) : (
+                  <>
+                    다음 <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
               </button>
             )}
           </div>
