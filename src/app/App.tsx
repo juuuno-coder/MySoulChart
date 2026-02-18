@@ -14,6 +14,7 @@ const ViewChart = lazy(() => import('../components/pages/ViewChart'));
 const SessionRestoreModal = lazy(() => import('../components/modals/SessionRestoreModal'));
 const OnboardingModal = lazy(() => import('../components/modals/OnboardingModal'));
 const CardCanvas = lazy(() => import('../components/card/CardCanvas'));
+const SoulChartView = lazy(() => import('../components/chart/SoulChartView'));
 import { useChat } from '../hooks/useChat';
 import { useSession } from '../hooks/useSession';
 import { useProfile } from '../hooks/useProfile';
@@ -23,6 +24,7 @@ import { useSessionStartTracking, useModeSwitch, useMessageTracking } from '../h
 import { Sparkles, BrainCircuit, RefreshCcw, Menu, X, Trophy, Home } from 'lucide-react';
 import { AnalysisMode, UserProfile } from '../types';
 import { CardData } from '../types/card';
+import { SoulChartData } from '../types/chart';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { validateProfile } from '../utils/validation';
@@ -51,6 +53,9 @@ const App: React.FC = () => {
   const [completionCardData, setCompletionCardData] = useState<CardData | null>(null);
   const [isGeneratingCard, setIsGeneratingCard] = useState(false);
   const cardGeneratedRef = useRef(false); // 중복 생성 방지
+
+  // Unified 모드 영혼 차트 (Firebase 없이 로컬 저장)
+  const [unifiedSoulChart, setUnifiedSoulChart] = useState<SoulChartData | null>(null);
 
   // Track previous mode to detect changes
   const prevModeRef = useRef<AnalysisMode>('integrated');
@@ -116,10 +121,10 @@ const App: React.FC = () => {
         import('../services/api').then(({ generateSoulChartFromConversation }) => {
           generateSoulChartFromConversation(profile, conversationHistory)
             .then((soulChart) => {
-              // 영혼 차트 뷰로 전환
+              // 영혼 차트 로컬 상태에 저장 후 뷰 전환
+              setUnifiedSoulChart(soulChart);
               setIsSessionActive(false);
               resetChat();
-              // chart 훅에 soulChart 저장은 별도 처리 필요 → 일단 로컬 상태로 전환
               navigate({ path: 'chart' });
               showToast('success', '영혼 차트가 완성되었습니다!');
             })
@@ -207,6 +212,7 @@ const App: React.FC = () => {
     resetSession();
     resetChat();
     setCompletionCardData(null);
+    setUnifiedSoulChart(null);
     cardGeneratedRef.current = false;
     prevModeRef.current = 'integrated';
     setIsMenuOpen(false);
@@ -608,8 +614,8 @@ const App: React.FC = () => {
               </motion.div>
             )}
 
-            {/* Route: Chart Dashboard */}
-            {currentRoute.path === 'chart' && chart && (
+            {/* Route: Chart Dashboard (또는 Unified SoulChart) */}
+            {currentRoute.path === 'chart' && (unifiedSoulChart || chart) && (
               <motion.div
                 key="chart"
                 initial={{ opacity: 0, y: 10 }}
@@ -619,14 +625,32 @@ const App: React.FC = () => {
                 className="w-full h-full overflow-y-auto"
               >
                 <Suspense fallback={<LoadingOverlay message="차트를 불러오는 중..." />}>
-                  <ChartDashboard
-                    chart={chart}
-                    profile={profile}
-                    onStartAnalysis={handleStartAnalysisFromChart}
-                    onStartQnA={handleStartQnA}
-                    isGeneratingSoulChart={isGeneratingSoulChart}
-                    onGenerateSoulChart={handleGenerateSoulChart}
-                  />
+                  {unifiedSoulChart ? (
+                    <SoulChartView
+                      soulChart={unifiedSoulChart}
+                      userName={profile.name}
+                      onStartQnA={() => {
+                        // Q&A 모드: unified soulChart 데이터로 대화
+                        setMode('integrated');
+                        navigate({ path: 'chat', mode: 'integrated' });
+                        setIsSessionActive(true);
+                        startSession('integrated', profile);
+                      }}
+                      onGoBack={() => {
+                        setUnifiedSoulChart(null);
+                        navigate({ path: 'home' });
+                      }}
+                    />
+                  ) : chart ? (
+                    <ChartDashboard
+                      chart={chart}
+                      profile={profile}
+                      onStartAnalysis={handleStartAnalysisFromChart}
+                      onStartQnA={handleStartQnA}
+                      isGeneratingSoulChart={isGeneratingSoulChart}
+                      onGenerateSoulChart={handleGenerateSoulChart}
+                    />
+                  ) : null}
                 </Suspense>
               </motion.div>
             )}

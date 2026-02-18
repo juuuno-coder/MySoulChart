@@ -46,34 +46,39 @@ const AstroWheel: React.FC<AstroWheelProps> = ({ dimensions, soulType, size = 34
     return () => clearTimeout(timer);
   }, []);
 
-  const cx = size / 2;
-  const cy = size / 2;
+  // 라벨이 잘리지 않도록 패딩 추가
+  const pad = 44;
+  const svgW = size + pad * 2;
+  const svgH = size + pad * 2;
+  const cx = svgW / 2;
+  const cy = svgH / 2;
 
-  // 반지름 설정
-  const outerRingR = size * 0.46;     // 바깥 장식 링
-  const arcTrackR = size * 0.37;      // 아크 트랙 (배경)
-  const arcR = size * 0.37;           // 아크 데이터
-  const innerRingR = size * 0.25;     // 안쪽 링
-  const centerR = size * 0.18;        // 중심 원
+  // 반지름 설정 (size 기준 유지)
+  const outerRingR = size * 0.40;     // 바깥 장식 링
+  const arcTrackR = size * 0.33;      // 아크 트랙 (배경)
+  const arcR = size * 0.33;           // 아크 데이터
+  const innerRingR = size * 0.22;     // 안쪽 링
+  const centerR = size * 0.16;        // 중심 원
 
   const segmentAngle = 360 / 5;       // 72도씩
   const arcGap = 6;                   // 세그먼트 간 간격 (도)
   const arcStroke = size * 0.045;     // 아크 두께
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <div className="relative" style={{ width: svgW, height: svgH }}>
       {/* 배경 글로우 */}
       <div
-        className="absolute inset-0 rounded-full opacity-40 blur-3xl"
+        className="absolute rounded-full opacity-40 blur-3xl"
         style={{
+          top: pad, left: pad, width: size, height: size,
           background: 'radial-gradient(circle, #8b5cf640 0%, #14b8a620 40%, transparent 70%)',
         }}
       />
 
       <svg
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
+        width={svgW}
+        height={svgH}
+        viewBox={`0 0 ${svgW} ${svgH}`}
         className="relative z-10"
       >
         <defs>
@@ -232,7 +237,7 @@ const AstroWheel: React.FC<AstroWheelProps> = ({ dimensions, soulType, size = 34
         {/* === 심볼 + 라벨 === */}
         {DIMENSION_CONFIG.map((dim, i) => {
           const midAngle = i * segmentAngle + segmentAngle / 2;
-          const symbolPos = polarToXY(cx, cy, outerRingR + 20, midAngle);
+          const symbolPos = polarToXY(cx, cy, outerRingR + 24, midAngle);
           const value = dimensions[dim.key];
 
           return (
@@ -378,10 +383,11 @@ const AstroWheel: React.FC<AstroWheelProps> = ({ dimensions, soulType, size = 34
 
       {/* 느린 회전 장식 링 (CSS 애니메이션) */}
       <div
-        className="absolute inset-0 rounded-full pointer-events-none astro-rotate"
+        className="absolute rounded-full pointer-events-none astro-rotate"
         style={{
           border: '1px dashed rgba(139, 92, 246, 0.1)',
-          margin: '-8px',
+          top: pad - 8,
+          left: pad - 8,
           width: size + 16,
           height: size + 16,
         }}
