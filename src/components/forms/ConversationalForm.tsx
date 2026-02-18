@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { UserProfile, AnalysisMode, CalendarType, PersonData } from '../../types';
-import { Sparkles, ArrowRight, Upload } from 'lucide-react';
+import { Sparkles, ArrowRight, Upload, UserCheck, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AceternityInput } from '../ui/AceternityInput';
 import AceternityDateSelector from '../ui/AceternityDateSelector';
+import { loadProfile } from '../../utils/storage';
+import { validateProfile } from '../../utils/validation';
 
 interface ConversationalFormProps {
   mode: AnalysisMode;
@@ -31,6 +33,22 @@ export default function ConversationalForm({ mode, profile, onSubmit, onCancel, 
   const [currentStep, setCurrentStep] = useState(0);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [currentValue, setCurrentValue] = useState('');
+
+  // 재방문 사용자 감지
+  const [showReturningCard, setShowReturningCard] = useState(false);
+  const [savedProfile, setSavedProfile] = useState<Partial<UserProfile> | null>(null);
+
+  useEffect(() => {
+    const stored = loadProfile();
+    if (stored && stored.name) {
+      // 현재 모드에 필요한 필드가 충분한지 검증
+      const validation = validateProfile(mode, stored);
+      if (validation.isValid) {
+        setSavedProfile(stored);
+        setShowReturningCard(true);
+      }
+    }
+  }, [mode]);
 
   // 질문 ID → 프로필 업데이트 매핑
   const mapToProfile = (questionId: string, value: string): Partial<UserProfile> => {
@@ -334,6 +352,91 @@ export default function ConversationalForm({ mode, profile, onSubmit, onCancel, 
       input.focus();
     }
   }, [currentStep]);
+
+  // === 재방문 사용자 환영 카드 ===
+  if (showReturningCard && savedProfile) {
+    const profileItems = [
+      savedProfile.name && { label: '이름', value: savedProfile.name },
+      savedProfile.birthDate && { label: '생년월일', value: savedProfile.birthDate },
+      savedProfile.bloodType && { label: '혈액형', value: `${savedProfile.bloodType}형` },
+      savedProfile.mbti && { label: 'MBTI', value: savedProfile.mbti },
+      savedProfile.gender && { label: '성별', value: savedProfile.gender === 'male' ? '남성' : '여성' },
+    ].filter(Boolean) as { label: string; value: string }[];
+
+    return (
+      <div className="w-full max-w-md mx-auto px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="glass-panel p-8 rounded-2xl text-center space-y-6"
+        >
+          {/* 아이콘 */}
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-nebula-500/15 border border-nebula-500/30 mx-auto">
+            <UserCheck className="w-8 h-8 text-nebula-400" />
+          </div>
+
+          {/* 인사 */}
+          <div>
+            <h2 className="text-2xl font-serif font-bold text-starlight-200 mb-2">
+              어서 오시게, {savedProfile.name}님!
+            </h2>
+            <p className="text-sm text-starlight-400/70">
+              이전에 입력하신 정보가 있습니다
+            </p>
+          </div>
+
+          {/* 프로필 요약 */}
+          <div className="bg-cosmic-800/50 rounded-xl p-4 space-y-2">
+            {profileItems.map((item) => (
+              <div key={item.label} className="flex items-center justify-between text-sm">
+                <span className="text-starlight-400/60">{item.label}</span>
+                <span className="text-starlight-200 font-medium">{item.value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* 메인 CTA */}
+          <motion.button
+            onClick={() => onSubmit(savedProfile)}
+            className="w-full px-6 py-4 rounded-xl nebula-gradient text-white font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Sparkles className="w-5 h-5" />
+            이 정보로 상담 시작
+          </motion.button>
+
+          {/* 보조 액션 */}
+          <div className="flex items-center justify-center gap-4 text-sm">
+            <button
+              onClick={() => {
+                // localStorage 프로필 삭제 + 빈 폼
+                localStorage.removeItem('vibeProfile');
+                setSavedProfile(null);
+                setShowReturningCard(false);
+              }}
+              className="text-starlight-400/60 hover:text-starlight-300 transition-colors"
+            >
+              다른 사람이에요
+            </button>
+            <span className="text-cosmic-700">|</span>
+            <button
+              onClick={() => {
+                // 기존 값 채워서 폼으로 전환
+                onChange(savedProfile);
+                setShowReturningCard(false);
+              }}
+              className="text-nebula-400/80 hover:text-nebula-300 transition-colors flex items-center gap-1"
+            >
+              <RefreshCw className="w-3 h-3" />
+              정보 수정하기
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div

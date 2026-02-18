@@ -83,8 +83,57 @@ export default function ProductFormSidebar({ mode, profile, onChange, completedA
     </div>
   );
 
+  const ANALYSIS_LABELS = ['관상', '사주', '점성학', 'MBTI', '혈액형'];
+
   return (
-    <div className="h-screen overflow-y-auto p-6 space-y-6 bg-cosmic-900/30">
+    <div className="h-screen overflow-y-auto bg-cosmic-900/30">
+      {/* Soul Chart 진행률 - 상단 고정 */}
+      <div className="sticky top-0 z-10 bg-cosmic-900/95 backdrop-blur-md border-b border-cosmic-800/50 px-6 py-4">
+        <div className="flex items-center gap-4">
+          {/* 미니 원형 프로그레스 */}
+          <div className="relative w-14 h-14 shrink-0">
+            <svg className="w-full h-full transform -rotate-90">
+              <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(139, 92, 246, 0.1)" strokeWidth="5" />
+              <circle
+                cx="28" cy="28" r="22"
+                fill="none"
+                stroke="url(#sidebarGrad)"
+                strokeWidth="5"
+                strokeDasharray={`${(completedAnalyses / 5) * 138.2} 138.2`}
+                strokeLinecap="round"
+                className="transition-all duration-500"
+              />
+              <defs>
+                <linearGradient id="sidebarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#8b5cf6" />
+                  <stop offset="100%" stopColor="#60a5fa" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-sm font-bold text-starlight-200">{completedAnalyses}/5</span>
+            </div>
+          </div>
+
+          {/* 텍스트 + 도트 */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-nebula-400 star-twinkle" />
+              <span className="text-sm font-bold text-starlight-200">Soul Chart</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {ANALYSIS_LABELS.map((name, index) => (
+                <div key={name} className="flex items-center gap-1" title={name}>
+                  <div className={`w-2 h-2 rounded-full transition-colors ${index < completedAnalyses ? 'bg-nebula-400' : 'bg-cosmic-700'}`} />
+                  <span className="text-[10px] text-starlight-400/50 hidden xl:inline">{name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-6">
       {/* 상품 타이틀 */}
       <div className="glass-panel p-4 rounded-2xl">
         <h3 className="font-serif text-xl font-bold text-starlight-200 text-center">
@@ -95,6 +144,7 @@ export default function ProductFormSidebar({ mode, profile, onChange, completedA
           {mode === 'blood' && '혈액형 심리'}
           {mode === 'couple' && '커플 궁합'}
           {mode === 'integrated' && '통합 심층분석'}
+          {mode === 'unified' && '영혼 차트 상담'}
         </h3>
       </div>
 
@@ -123,7 +173,7 @@ export default function ProductFormSidebar({ mode, profile, onChange, completedA
             />
             <label
               htmlFor="sidebar-face-upload"
-              className="block w-full h-40 border-2 border-dashed border-nebula-400/30 rounded-xl cursor-pointer hover:border-nebula-400/50 transition-colors flex items-center justify-center overflow-hidden"
+              className="w-full h-40 border-2 border-dashed border-nebula-400/30 rounded-xl cursor-pointer hover:border-nebula-400/50 transition-colors flex items-center justify-center overflow-hidden"
             >
               {profile.faceImage ? (
                 <img src={profile.faceImage} alt="Preview" className="w-full h-full object-cover" />
@@ -328,48 +378,6 @@ export default function ProductFormSidebar({ mode, profile, onChange, completedA
         </div>
       )}
 
-      {/* Soul Chart 진행률 */}
-      <div className="glass-panel p-6 rounded-2xl">
-        <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="w-5 h-5 text-nebula-400 star-twinkle" />
-          <h4 className="font-bold text-starlight-200">Soul Chart</h4>
-        </div>
-
-        <div className="relative w-32 h-32 mx-auto mb-4">
-          <svg className="w-full h-full transform -rotate-90">
-            <circle cx="64" cy="64" r="56" fill="none" stroke="rgba(139, 92, 246, 0.1)" strokeWidth="8" />
-            <circle
-              cx="64"
-              cy="64"
-              r="56"
-              fill="none"
-              stroke="url(#gradient)"
-              strokeWidth="8"
-              strokeDasharray={`${(completedAnalyses / 5) * 352} 352`}
-              strokeLinecap="round"
-              className="transition-all duration-500"
-            />
-            <defs>
-              <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#8b5cf6" />
-                <stop offset="100%" stopColor="#60a5fa" />
-              </linearGradient>
-            </defs>
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <p className="text-3xl font-bold text-starlight-200">{completedAnalyses}</p>
-            <p className="text-xs text-starlight-400/70">/ 5</p>
-          </div>
-        </div>
-
-        <div className="space-y-2 text-xs">
-          {['관상', '사주', '점성학', 'MBTI', '혈액형'].map((name, index) => (
-            <div key={name} className="flex items-center gap-2 text-starlight-300/70">
-              <div className={`w-2 h-2 rounded-full ${index < completedAnalyses ? 'bg-nebula-400' : 'bg-cosmic-700'}`} />
-              <span>{name}</span>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
