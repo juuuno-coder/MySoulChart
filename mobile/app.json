@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "My Soul Chart",
+    "slug": "my-soul-chart",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "scheme": "mysoulchart",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a1a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mysoulchart.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "관상 분석을 위해 카메라 접근이 필요합니다.",
+        "NSPhotoLibraryUsageDescription": "관상 분석을 위해 사진 접근이 필요합니다."
+      }
+    },
+    "android": {
+      "package": "com.mysoulchart.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0a1a"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": ["CAMERA"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "관상 분석을 위해 카메라 접근이 필요합니다."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "관상 분석을 위해 사진 접근이 필요합니다."
+        }
+      ]
+    ]
+  }
+}
