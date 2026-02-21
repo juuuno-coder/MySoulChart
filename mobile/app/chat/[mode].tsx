@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { useLocalSearchParams, Stack } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Message, UserProfile, AnalysisMode } from '../../shared/types';
 import { sendMessage, initializeSession } from '../../shared/services/api';
@@ -16,6 +16,7 @@ const MODE_NAMES: Record<string, string> = {
 
 export default function ChatScreen() {
   const params = useLocalSearchParams<{ mode: string; profile: string }>();
+  const router = useRouter();
   const mode = (params.mode || 'unified') as AnalysisMode;
   const profile: UserProfile = params.profile ? JSON.parse(params.profile) : {};
 
@@ -23,6 +24,7 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [depth, setDepth] = useState(0);
+  const [showCardPrompt, setShowCardPrompt] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   // 세션 시작 - 첫 AI 인사
@@ -86,6 +88,9 @@ export default function ChatScreen() {
 
       setMessages(prev => [...prev, aiMessage]);
       setDepth(response.depth);
+      if (response.depth >= 100) {
+        setShowCardPrompt(true);
+      }
     } catch (error: any) {
       const errorMessage: Message = {
         id: `err-${Date.now()}`,
@@ -98,6 +103,23 @@ export default function ChatScreen() {
 
     setIsLoading(false);
   }, [inputText, isLoading, messages, mode, profile]);
+
+  // 결과 카드 화면으로 이동
+  const handleGoToCard = () => {
+    const historyForCard = messages.map(m => ({
+      role: m.role === 'user' ? 'user' as const : 'assistant' as const,
+      text: m.text,
+    }));
+    router.push({
+      pathname: '/card/[mode]',
+      params: {
+        mode,
+        profile: JSON.stringify(profile),
+        history: JSON.stringify(historyForCard),
+        depth: String(depth),
+      },
+    });
+  };
 
   // 메시지 렌더링
   const renderMessage = ({ item }: { item: Message }) => {
@@ -137,6 +159,16 @@ export default function ChatScreen() {
           contentContainerStyle={styles.messageList}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
+
+        {/* 카드 생성 프롬프트 */}
+        {showCardPrompt && (
+          <View style={styles.cardPrompt}>
+            <Text style={styles.cardPromptText}>분석이 완료되었습니다!</Text>
+            <TouchableOpacity style={styles.cardPromptBtn} onPress={handleGoToCard}>
+              <Text style={styles.cardPromptBtnText}>결과 카드 보기 ✦</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* 로딩 */}
         {isLoading && (
@@ -233,4 +265,15 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: { opacity: 0.3 },
   sendIcon: { fontSize: 18, color: '#fff' },
+  // Card prompt
+  cardPrompt: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: '#1a1a42', borderTopWidth: 1, borderTopColor: '#9333ea40',
+  },
+  cardPromptText: { fontSize: 14, color: '#c084fc', fontWeight: '600' },
+  cardPromptBtn: {
+    backgroundColor: '#9333ea', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+  },
+  cardPromptBtnText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 });

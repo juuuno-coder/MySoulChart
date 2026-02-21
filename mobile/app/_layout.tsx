@@ -20,12 +20,20 @@ export default function RootLayout() {
           options={{ title: 'My Soul Chart', headerShown: false }}
         />
         <Stack.Screen
+          name="onboarding"
+          options={{ headerShown: false, animation: 'fade' }}
+        />
+        <Stack.Screen
           name="form/[mode]"
           options={{ title: '정보 입력', headerBackTitle: '뒤로' }}
         />
         <Stack.Screen
           name="chat/[mode]"
           options={{ title: '상담', headerBackTitle: '뒤로' }}
+        />
+        <Stack.Screen
+          name="card/[mode]"
+          options={{ title: '결과 카드', headerBackTitle: '뒤로' }}
         />
         <Stack.Screen
           name="chart"

@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useProfile } from '../hooks/useProfile';
+import { useChart } from '../hooks/useChart';
 
 type ModeItem = {
   id: string;
@@ -23,9 +26,28 @@ const MODES: ModeItem[] = [
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { hasCompletedOnboarding, isLoading: profileLoading } = useProfile();
+  const { chart, getProgress, isLoading: chartLoading } = useChart();
+  const progress = getProgress();
+
+  // 첫 방문 시 온보딩으로 리다이렉트
+  useEffect(() => {
+    if (!profileLoading && !hasCompletedOnboarding) {
+      router.replace('/onboarding');
+    }
+  }, [profileLoading, hasCompletedOnboarding]);
 
   const handleModeSelect = (modeId: string) => {
     router.push(`/form/${modeId}`);
+  };
+
+  const handleViewChart = () => {
+    if (chart?.soulChart) {
+      router.push({
+        pathname: '/chart',
+        params: { chartData: JSON.stringify(chart.soulChart) },
+      });
+    }
   };
 
   return (
@@ -40,6 +62,30 @@ export default function HomeScreen() {
             AI가 읽어주는 당신의 영혼
           </Text>
         </View>
+
+        {/* 진행률 카드 */}
+        {progress.count > 0 && (
+          <TouchableOpacity
+            style={styles.progressCard}
+            onPress={handleViewChart}
+            disabled={!chart?.soulChart}
+            activeOpacity={0.8}
+          >
+            <View style={styles.progressHeader}>
+              <Text style={styles.progressTitle}>영혼 차트 진행률</Text>
+              <Text style={styles.progressCount}>{progress.count}/{progress.total}</Text>
+            </View>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${progress.percentage}%` }]} />
+            </View>
+            {chart?.soulChart && (
+              <Text style={styles.progressHint}>탭하여 영혼 차트 보기</Text>
+            )}
+            {!chart?.soulChart && progress.count < 5 && (
+              <Text style={styles.progressHint}>{5 - progress.count}개 분석을 더 완료하세요</Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         {/* 통합 상담 (메인 CTA) */}
         <TouchableOpacity
@@ -60,18 +106,22 @@ export default function HomeScreen() {
         {/* 개별 분석 모드 */}
         <Text style={styles.sectionTitle}>개별 분석</Text>
         <View style={styles.grid}>
-          {MODES.slice(1).map((mode) => (
-            <TouchableOpacity
-              key={mode.id}
-              style={styles.modeCard}
-              onPress={() => handleModeSelect(mode.id)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.modeIcon}>{mode.icon}</Text>
-              <Text style={styles.modeTitle}>{mode.title}</Text>
-              <Text style={styles.modeSubtitle}>{mode.subtitle}</Text>
-            </TouchableOpacity>
-          ))}
+          {MODES.slice(1).map((mode) => {
+            const completed = chart?.completedAnalyses?.[mode.id as keyof typeof chart.completedAnalyses];
+            return (
+              <TouchableOpacity
+                key={mode.id}
+                style={[styles.modeCard, completed && styles.modeCardCompleted]}
+                onPress={() => handleModeSelect(mode.id)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modeIcon}>{mode.icon}</Text>
+                <Text style={styles.modeTitle}>{mode.title}</Text>
+                <Text style={styles.modeSubtitle}>{mode.subtitle}</Text>
+                {completed && <Text style={styles.completedBadge}>완료</Text>}
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* 하단 안내 */}
@@ -112,6 +162,49 @@ const styles = StyleSheet.create({
     color: '#9da3ff',
     opacity: 0.7,
   },
+  // Progress card
+  progressCard: {
+    backgroundColor: '#12122e',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#9333ea30',
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  progressTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#9da3ff',
+  },
+  progressCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#c084fc',
+  },
+  progressTrack: {
+    height: 6,
+    backgroundColor: '#1a1a42',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#9333ea',
+    borderRadius: 3,
+  },
+  progressHint: {
+    fontSize: 12,
+    color: '#9da3ff60',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  // Main card
   mainCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -170,6 +263,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1a1a42',
   },
+  modeCardCompleted: {
+    borderColor: '#9333ea40',
+  },
   modeIcon: {
     fontSize: 28,
     marginBottom: 10,
@@ -184,6 +280,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9da3ff',
     opacity: 0.6,
+  },
+  completedBadge: {
+    fontSize: 11,
+    color: '#9333ea',
+    fontWeight: '600',
+    marginTop: 6,
   },
   footer: {
     textAlign: 'center',
