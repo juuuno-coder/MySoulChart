@@ -188,17 +188,22 @@ export async function generateSoulChartFromConversation(
   profile: Partial<UserProfile>,
   conversationHistory: Array<{ role: 'user' | 'assistant'; text: string }>
 ): Promise<SoulChartData> {
-  const response = await fetch(`${API_BASE_URL}/generate-soul-chart`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ profile, conversationHistory, mode: 'unified' }),
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/generate-soul-chart`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile, conversationHistory, mode: 'unified' }),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || '영혼 차트 생성 오류가 발생했습니다');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || '영혼 차트 생성 오류가 발생했습니다');
+    }
+
+    const data = await response.json();
+    return data.soulChart;
+  } catch (error: any) {
+    console.error('Soul Chart From Conversation Error:', error);
+    throw new Error(error.message || '영혼 차트 생성 중 오류가 발생했습니다');
   }
-
-  const data = await response.json();
-  return data.soulChart;
 }

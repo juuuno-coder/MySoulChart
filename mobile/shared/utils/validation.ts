@@ -69,6 +69,18 @@ export function validateProfile(
       }
       break;
 
+    case 'unified':
+      if (!profile.birthDate) {
+        errors.birthDate = '생년월일을 입력해주세요';
+      }
+      if (!profile.bloodType) {
+        errors.bloodType = '혈액형을 선택해주세요';
+      }
+      if (!profile.mbti) {
+        errors.mbti = 'MBTI를 입력해주세요';
+      }
+      break;
+
     case 'integrated':
       break;
   }

@@ -11,7 +11,7 @@ import { UserChart, AnalysisResult, SoulChartData, MODE_NAMES } from '../shared/
 import { AnalysisMode, UserProfile } from '../shared/types';
 import { CardData } from '../shared/types/card';
 import { generateSoulChart } from '../shared/services/api';
-import { Alert } from 'react-native';
+import { showToast } from '../shared/utils/toast';
 
 const CHART_STORAGE_KEY = '@mysoulchart/userChart';
 
@@ -28,6 +28,19 @@ export function useChart() {
       const localData = await AsyncStorage.getItem(CHART_STORAGE_KEY);
       if (localData) {
         const parsed = JSON.parse(localData);
+        // Date 문자열 → Date 객체 복원
+        if (parsed.createdAt) parsed.createdAt = new Date(parsed.createdAt);
+        if (parsed.updatedAt) parsed.updatedAt = new Date(parsed.updatedAt);
+        if (parsed.completedAnalyses) {
+          for (const value of Object.values(parsed.completedAnalyses)) {
+            const v = value as any;
+            if (v?.completedAt) v.completedAt = new Date(v.completedAt);
+            if (v?.cardData?.completedAt) v.cardData.completedAt = new Date(v.cardData.completedAt);
+          }
+        }
+        if (parsed.soulChart?.createdAt) {
+          parsed.soulChart.createdAt = new Date(parsed.soulChart.createdAt);
+        }
         setChart(parsed);
       }
 
@@ -93,7 +106,8 @@ export function useChart() {
           [mode]: result,
         };
 
-        const completedCount = Object.keys(updatedAnalyses).length;
+        const CORE_MODES = ['face', 'saju', 'zodiac', 'mbti', 'blood'];
+        const completedCount = Object.keys(updatedAnalyses).filter(k => CORE_MODES.includes(k)).length;
         const progressPercentage = (completedCount / 5) * 100;
 
         const updatedChart: UserChart = {
@@ -120,16 +134,16 @@ export function useChart() {
           });
         }
 
-        Alert.alert('완료', `${MODE_NAMES[mode]} 분석이 완료되었습니다! (${completedCount}/5)`);
+        showToast('success', `${MODE_NAMES[mode]} 분석이 완료되었습니다! (${completedCount}/5)`);
 
         if (completedCount === 5) {
           setTimeout(() => {
-            Alert.alert('축하합니다!', '영혼 차트를 모두 완성하셨습니다!');
+            showToast('success', '영혼 차트를 모두 완성하셨습니다!');
           }, 1000);
         }
       } catch (error) {
         console.error('분석 완료 저장 에러:', error);
-        Alert.alert('오류', '분석 결과 저장에 실패했습니다');
+        showToast('error', '분석 결과 저장에 실패했습니다');
       }
     },
     [chart]
@@ -171,11 +185,11 @@ export function useChart() {
           });
         }
 
-        Alert.alert('완성!', '종합 영혼 차트가 완성되었습니다!');
+        showToast('success', '종합 영혼 차트가 완성되었습니다!');
         return soulChart;
       } catch (error) {
         console.error('종합 차트 생성 에러:', error);
-        Alert.alert('오류', '종합 차트 생성에 실패했습니다');
+        showToast('error', '종합 차트 생성에 실패했습니다');
         return null;
       } finally {
         setIsGeneratingSoulChart(false);

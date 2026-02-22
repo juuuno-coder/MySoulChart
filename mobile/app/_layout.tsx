@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
+import ToastContainer from '../components/ui/Toast';
 
 export default function RootLayout() {
   return (
@@ -40,6 +41,7 @@ export default function RootLayout() {
           options={{ title: 'Soul Chart' }}
         />
       </Stack>
+      <ToastContainer />
     </View>
   );
 }

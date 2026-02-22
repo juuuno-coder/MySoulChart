@@ -12,9 +12,10 @@ export default function ChartScreen() {
   const params = useLocalSearchParams<{ chartData: string }>();
   const router = useRouter();
 
-  const chartData: SoulChartData | null = params.chartData
-    ? JSON.parse(params.chartData)
-    : null;
+  const chartData: SoulChartData | null = (() => {
+    if (!params.chartData) return null;
+    try { return JSON.parse(params.chartData); } catch { return null; }
+  })();
 
   if (!chartData) {
     return (

@@ -1,15 +1,19 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, ActivityIndicator, Image, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { AnalysisMode, UserProfile } from '../../shared/types';
 import { analyzeFace } from '../../shared/services/api';
 import { showToast } from '../../shared/utils/toast';
+import { validateImageBase64 } from '../../shared/utils/fileValidation';
+
+const PROFILE_STORAGE_KEY = '@mysoulchart/savedProfile';
 
 const MODE_NAMES: Record<string, string> = {
   face: '관상 분석', zodiac: '별자리', mbti: 'MBTI',
@@ -112,6 +116,24 @@ function getQuestions(mode: string): Question[] {
     });
   }
 
+  // 커플 모드: 파트너 정보
+  if (mode === 'couple') {
+    questions.push({
+      id: 'partnerName',
+      text: '상대방의 이름을 알려주시게.\n두 영혼의 인연을 살펴보겠네.',
+      type: 'text',
+      required: true,
+      placeholder: '예: 김철수',
+    });
+    questions.push({
+      id: 'partnerBirthDate',
+      text: '상대방은 언제 태어났는가?',
+      type: 'text',
+      required: true,
+      placeholder: '예: 1992-07-20',
+    });
+  }
+
   return questions;
 }
 
@@ -126,7 +148,32 @@ export default function FormScreen() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [showCamera, setShowCamera] = useState(false);
+  const [savedProfile, setSavedProfile] = useState<Partial<UserProfile> | null>(null);
   const cameraRef = useRef<CameraView>(null);
+  const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // cleanup setTimeout on unmount + 저장된 프로필 확인
+  useEffect(() => {
+    AsyncStorage.getItem(PROFILE_STORAGE_KEY)
+      .then(data => {
+        if (data) {
+          try { setSavedProfile(JSON.parse(data)); } catch {}
+        }
+      })
+      .catch(() => {});
+    return () => {
+      if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
+    };
+  }, []);
+
+  // 저장된 프로필로 바로 시작
+  const handleUseSavedProfile = () => {
+    if (!savedProfile) return;
+    router.replace({
+      pathname: `/chat/${mode}`,
+      params: { profile: JSON.stringify(savedProfile) },
+    });
+  };
 
   const questions = getQuestions(mode || 'unified');
   const currentQuestion = questions[step];
@@ -163,6 +210,10 @@ export default function FormScreen() {
         return;
       }
       setIsAnalyzing(false);
+    } else if (currentQuestion.id === 'partnerName') {
+      updatedProfile.partner = { ...updatedProfile.partner, name: currentValue } as any;
+    } else if (currentQuestion.id === 'partnerBirthDate') {
+      updatedProfile.partner = { ...updatedProfile.partner, birthDate: currentValue } as any;
     } else {
       (updatedProfile as any)[currentQuestion.id] = currentValue;
     }
@@ -170,6 +221,11 @@ export default function FormScreen() {
     setProfile(updatedProfile);
 
     if (isLastStep) {
+      // 프로필 저장 (faceImage 제외, 용량 절약)
+      const profileToSave = { ...updatedProfile };
+      delete profileToSave.faceImage;
+      AsyncStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profileToSave)).catch(() => {});
+
       // 채팅 화면으로 이동 (프로필 데이터를 params로 전달)
       router.replace({
         pathname: `/chat/${mode}`,
@@ -184,10 +240,17 @@ export default function FormScreen() {
   // 카메라 촬영
   const takePicture = async () => {
     if (!cameraRef.current) return;
-    const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.7 });
+    const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.5, exif: false });
     if (photo) {
+      const base64Str = `data:image/jpeg;base64,${photo.base64}`;
+      const validation = validateImageBase64(base64Str);
+      if (!validation.isValid) {
+        showToast('error', validation.error || '이미지 검증 실패');
+        setShowCamera(false);
+        return;
+      }
       setImageUri(photo.uri);
-      setImageBase64(`data:image/jpeg;base64,${photo.base64}`);
+      setImageBase64(base64Str);
       setShowCamera(false);
       setCurrentValue('captured');
     }
@@ -199,13 +262,19 @@ export default function FormScreen() {
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.7,
+      quality: 0.5,
       base64: true,
     });
 
     if (!result.canceled && result.assets[0]) {
+      const base64Str = `data:image/jpeg;base64,${result.assets[0].base64}`;
+      const validation = validateImageBase64(base64Str);
+      if (!validation.isValid) {
+        showToast('error', validation.error || '이미지 검증 실패');
+        return;
+      }
       setImageUri(result.assets[0].uri);
-      setImageBase64(`data:image/jpeg;base64,${result.assets[0].base64}`);
+      setImageBase64(base64Str);
       setCurrentValue('picked');
     }
   };
@@ -247,6 +316,16 @@ export default function FormScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <ScrollView contentContainerStyle={styles.content}>
+            {/* 저장된 프로필로 바로 시작 */}
+            {savedProfile?.name && step === 0 && mode !== 'face' && mode !== 'couple' && (
+              <TouchableOpacity style={styles.savedProfileBanner} onPress={handleUseSavedProfile}>
+                <Text style={styles.savedProfileText}>
+                  {savedProfile.name}님, 이전 정보로 바로 시작하기
+                </Text>
+                <Text style={styles.savedProfileArrow}>→</Text>
+              </TouchableOpacity>
+            )}
+
             {/* 진행률 */}
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: `${((step + 1) / questions.length) * 100}%` }]} />
@@ -302,8 +381,8 @@ export default function FormScreen() {
                     ]}
                     onPress={() => {
                       setCurrentValue(option.value);
-                      // 자동 진행
-                      setTimeout(() => {
+                      // 자동 진행 (cleanup 가능한 ref 기반)
+                      autoAdvanceTimer.current = setTimeout(() => {
                         const updatedProfile = { ...profile, [currentQuestion.id]: option.value };
                         setProfile(updatedProfile);
                         if (isLastStep) {
@@ -385,6 +464,14 @@ export default function FormScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a1a' },
   content: { padding: 24, paddingTop: 16 },
+  // Saved profile banner
+  savedProfileBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#9333ea20', borderWidth: 1, borderColor: '#9333ea40',
+    borderRadius: 12, padding: 14, marginBottom: 16,
+  },
+  savedProfileText: { fontSize: 14, color: '#c084fc', fontWeight: '500', flex: 1 },
+  savedProfileArrow: { fontSize: 18, color: '#c084fc', fontWeight: 'bold', marginLeft: 8 },
   progressBar: {
     height: 4, backgroundColor: '#12122e', borderRadius: 2, marginBottom: 8,
   },

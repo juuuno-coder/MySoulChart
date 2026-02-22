@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Share, Platform,
+  ActivityIndicator, Share,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle } from 'react-native-svg';
 import { AnalysisMode, UserProfile } from '../../shared/types';
 import { CardData } from '../../shared/types/card';
 import { generateCard } from '../../shared/services/api';
@@ -28,8 +27,14 @@ export default function CardScreen() {
   }>();
   const router = useRouter();
   const mode = (params.mode || 'unified') as AnalysisMode;
-  const profile: Partial<UserProfile> = params.profile ? JSON.parse(params.profile) : {};
-  const history = params.history ? JSON.parse(params.history) : [];
+  const profile: Partial<UserProfile> = (() => {
+    if (!params.profile) return {};
+    try { return JSON.parse(params.profile); } catch { return {}; }
+  })();
+  const history = (() => {
+    if (!params.history) return [];
+    try { return JSON.parse(params.history); } catch { return []; }
+  })();
   const depthScore = parseInt(params.depth || '100', 10);
 
   const [card, setCard] = useState<CardData | null>(null);

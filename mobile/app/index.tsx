@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useProfile } from '../hooks/useProfile';
@@ -27,7 +28,7 @@ const MODES: ModeItem[] = [
 export default function HomeScreen() {
   const router = useRouter();
   const { hasCompletedOnboarding, isLoading: profileLoading } = useProfile();
-  const { chart, getProgress, isLoading: chartLoading } = useChart();
+  const { chart, getProgress, loadChart, isLoading: chartLoading } = useChart();
   const progress = getProgress();
 
   // 첫 방문 시 온보딩으로 리다이렉트
@@ -36,6 +37,13 @@ export default function HomeScreen() {
       router.replace('/onboarding');
     }
   }, [profileLoading, hasCompletedOnboarding]);
+
+  // 홈 화면 포커스 시 차트 데이터 자동 갱신
+  useFocusEffect(
+    useCallback(() => {
+      loadChart();
+    }, [loadChart])
+  );
 
   const handleModeSelect = (modeId: string) => {
     router.push(`/form/${modeId}`);
@@ -92,6 +100,8 @@ export default function HomeScreen() {
           style={[styles.mainCard, { borderColor: MODES[0].color + '40' }]}
           onPress={() => handleModeSelect('unified')}
           activeOpacity={0.8}
+          accessibilityLabel="통합 영혼 상담 시작"
+          accessibilityRole="button"
         >
           <Text style={styles.mainCardIcon}>{MODES[0].icon}</Text>
           <View style={styles.mainCardText}>
@@ -114,6 +124,8 @@ export default function HomeScreen() {
                 style={[styles.modeCard, completed && styles.modeCardCompleted]}
                 onPress={() => handleModeSelect(mode.id)}
                 activeOpacity={0.7}
+                accessibilityLabel={`${mode.title} ${completed ? '(완료)' : ''}`}
+                accessibilityRole="button"
               >
                 <Text style={styles.modeIcon}>{mode.icon}</Text>
                 <Text style={styles.modeTitle}>{mode.title}</Text>
